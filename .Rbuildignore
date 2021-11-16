@@ -1,0 +1,14 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^doc$
+^Meta$
+^data_raw$
+^\.lintr$
+^\.gitignore$
+^statsurv_punchlist.txt$
+^adding_alarm_functions.txt$
+^exploratory$
+^\.Rhistory$
+^LICENSE\.md$
+^lib$
+^coverage_report\.html$

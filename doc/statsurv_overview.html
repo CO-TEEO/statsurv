@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>An introduction to statsurv</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+<script>// Hide empty <a> tag within highlighted CodeBlock for screen reader accessibility (see https://github.com/jgm/pandoc/issues/6352#issuecomment-626106786) -->
+// v0.0.1
+// Written by JooYoung Seo (jooyoung@psu.edu) and Atsushi Yasumoto on June 1st, 2020.
+
+document.addEventListener('DOMContentLoaded', function() {
+  const codeList = document.getElementsByClassName("sourceCode");
+  for (var i = 0; i < codeList.length; i++) {
+    var linkList = codeList[i].getElementsByTagName('a');
+    for (var j = 0; j < linkList.length; j++) {
+      if (linkList[j].innerHTML === "") {
+        linkList[j].setAttribute('aria-hidden', 'true');
+      }
+    }
+  }
+});
+</script>
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">An introduction to <code>statsurv</code></h1>
+
+
+
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">library</span>(statsurv)</span></code></pre></div>
+<div id="overview" class="section level2">
+<h2>Overview</h2>
+<p>Statistical surveillance is any sort of systematic, ongoing analysis aimed at detecting changes in outcomes as they occur. This process requires developing a model to predict the outcome of interest, and then systematically examining the measured outcomes as they occur and determining when the observed outcomes no longer match the predicted outcomes. If the amount of data reported is large or if there is significant natural variability in the rate of case events, statistical techniques can be extremely helpful in determining when a change in the number of events is important, and when it is merely noise</p>
+<p>The key steps in applying statistical surveillance are as follows:</p>
+<ol style="list-style-type: decimal">
+<li><p>Collecting and standardizing measurements of the outcome variable</p></li>
+<li><p>Developing a statistical model to predict the outcome variable</p></li>
+<li><p>Using the statistical model to predict the outcome variable in a given region or time period.</p></li>
+<li><p>Applying an alarm function to compare the actual outcome with the predictions, and determine the likelihood of the actual outcome happening by chance given the predictions.</p></li>
+<li><p>Repeat this process continually as new data is collected.</p></li>
+</ol>
+<p>The <code>statsurv</code> package is designed to help with every aspect of this process, from data collection or aggregation, to modeling, predicting, and applying alarm functions. And it is designed to simplify applying these steps consistently and repeatedly. <code>statsurv</code> also depends on two additional packages: <code>gridcoord</code>, which helps organize the spatial and temporal coordinates, and <code>simplecache</code>, which can help smartly save the results.</p>
+</div>
+<div id="installation" class="section level2">
+<h2>Installation</h2>
+<p>The <code>statsurv</code> package currently likes on the J: drive, at “J:/COEPHT/EH17-1702/Colorado Tracking Activities/Statistical Surveillance”. Because it is not currently on CRAN, installation is slightly more involved than for a typical R package. The easiest way to install it is to run the file “installation_script.R”, located in the same folder. With your permission, this package will install <code>statsurv</code> and all of its dependencies (including 2 other packages in the same folder) to your R library.</p>
+<p>If you wish to install the package without the script, the simplest way is to use the <code>install_local</code> command from the <code>devtools</code> package.</p>
+</div>
+<div id="using-the-statsurv-package" class="section level2">
+<h2>Using the <code>statsurv</code> package</h2>
+<p>As an example of how to use the <code>statsurv</code> package, we’re going to use the classic example of the number of brain cancer cases in New Mexico. This dataset was studied by Kulldorff in developing SaTScan and is also used by the <code>scanstatistics</code> package as their example.</p>
+<p>Before we start performing surveillance, we need to load the data. The populations and case counts are included in <code>NM_popcas</code> from the <code>scanstatistics</code> package, and county bondaries are included in the <code>statsurv</code> package. We’re also going to generate defined space and time coordinates for our data, using the <code>gridcoord</code> package.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">library</span>(<span class="st">&quot;scanstatistics&quot;</span>)</span>
+<span id="cb2-2"><a href="#cb2-2"></a><span class="kw">library</span>(<span class="st">&quot;lubridate&quot;</span>)</span>
+<span id="cb2-3"><a href="#cb2-3"></a><span class="kw">library</span>(<span class="st">&quot;gridcoord&quot;</span>)</span>
+<span id="cb2-4"><a href="#cb2-4"></a><span class="kw">library</span>(<span class="st">&quot;dplyr&quot;</span>)</span>
+<span id="cb2-5"><a href="#cb2-5"></a><span class="kw">library</span>(<span class="st">&quot;sf&quot;</span>)</span>
+<span id="cb2-6"><a href="#cb2-6"></a></span>
+<span id="cb2-7"><a href="#cb2-7"></a><span class="kw">data</span>(NM_popcas)</span>
+<span id="cb2-8"><a href="#cb2-8"></a>NM_popcas &lt;-<span class="st"> </span>NM_popcas <span class="op">%&gt;%</span></span>
+<span id="cb2-9"><a href="#cb2-9"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">county =</span> <span class="kw">as.character</span>(county))</span>
+<span id="cb2-10"><a href="#cb2-10"></a><span class="kw">head</span>(NM_popcas)</span>
+<span id="cb2-11"><a href="#cb2-11"></a><span class="co">#&gt;   year     county population count</span></span>
+<span id="cb2-12"><a href="#cb2-12"></a><span class="co">#&gt; 1 1973 bernalillo     353813    16</span></span>
+<span id="cb2-13"><a href="#cb2-13"></a><span class="co">#&gt; 2 1974 bernalillo     357520    16</span></span>
+<span id="cb2-14"><a href="#cb2-14"></a><span class="co">#&gt; 3 1975 bernalillo     368166    16</span></span>
+<span id="cb2-15"><a href="#cb2-15"></a><span class="co">#&gt; 4 1976 bernalillo     378483    16</span></span>
+<span id="cb2-16"><a href="#cb2-16"></a><span class="co">#&gt; 5 1977 bernalillo     388471    15</span></span>
+<span id="cb2-17"><a href="#cb2-17"></a><span class="co">#&gt; 6 1978 bernalillo     398130    18</span></span>
+<span id="cb2-18"><a href="#cb2-18"></a></span>
+<span id="cb2-19"><a href="#cb2-19"></a>nm_county_fips_<span class="dv">2010</span> &lt;-<span class="st"> </span>statsurv<span class="op">::</span>nm_county_fips_<span class="dv">2010</span> <span class="op">%&gt;%</span></span>
+<span id="cb2-20"><a href="#cb2-20"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">county_name =</span> <span class="kw">gsub</span>(<span class="st">&quot; &quot;</span>, <span class="st">&quot;&quot;</span>, <span class="kw">tolower</span>(county_name))) <span class="op">%&gt;%</span><span class="st"> </span><span class="co">#Remove spaces, make lower case </span></span>
+<span id="cb2-21"><a href="#cb2-21"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">county =</span> county_name) <span class="op">%&gt;%</span></span>
+<span id="cb2-22"><a href="#cb2-22"></a><span class="st">  </span>dplyr<span class="op">::</span><span class="kw">filter</span>(county <span class="op">!=</span><span class="st"> &quot;cibola&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb2-23"><a href="#cb2-23"></a><span class="st">  </span><span class="kw">gc_gridcoord</span>(<span class="st">&quot;county&quot;</span>)</span>
+<span id="cb2-24"><a href="#cb2-24"></a></span>
+<span id="cb2-25"><a href="#cb2-25"></a></span>
+<span id="cb2-26"><a href="#cb2-26"></a></span>
+<span id="cb2-27"><a href="#cb2-27"></a>yr_start &lt;-<span class="st"> </span><span class="kw">min</span>(NM_popcas<span class="op">$</span>year)</span>
+<span id="cb2-28"><a href="#cb2-28"></a>yr_fin &lt;-<span class="st"> </span><span class="kw">max</span>(NM_popcas<span class="op">$</span>year)</span>
+<span id="cb2-29"><a href="#cb2-29"></a>date_start &lt;-<span class="st"> </span><span class="kw">ymd</span>(<span class="kw">paste0</span>(yr_start, <span class="st">&quot;-01-01&quot;</span>))</span>
+<span id="cb2-30"><a href="#cb2-30"></a>date_fin &lt;-<span class="st"> </span><span class="kw">ymd</span>(<span class="kw">paste0</span>(yr_fin, <span class="st">&quot;-12-31&quot;</span>))</span>
+<span id="cb2-31"><a href="#cb2-31"></a>year_coord &lt;-<span class="st"> </span><span class="kw">generate_date_range</span>(date_start, date_fin, <span class="dt">time_division =</span> <span class="st">&quot;year&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb2-32"><a href="#cb2-32"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">year =</span> date_label) <span class="op">%&gt;%</span></span>
+<span id="cb2-33"><a href="#cb2-33"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">year =</span> <span class="kw">as.numeric</span>(year))</span></code></pre></div>
+<p>In this case, the data is already provided to us at the county level. If instead we had individual case locations, with associated lat/lon information, we could aggregate them by year and by county using the <code>gc_aggregate_by</code> command and our coordinates for the county and the year.</p>
+<div id="performing-surveillance-once" class="section level4">
+<h4>Performing surveillance once</h4>
+<p>Our first step in the analysis is to develop a model to predict the number of cases in each county in each year. Let’s start with a fairly simple model, where the number of cases depends on the year, with an offset for the log population of the county.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a>mod &lt;-<span class="st"> </span><span class="kw">glm</span>(count <span class="op">~</span><span class="st"> </span>year,</span>
+<span id="cb3-2"><a href="#cb3-2"></a>           <span class="dt">family =</span> <span class="kw">poisson</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>),</span>
+<span id="cb3-3"><a href="#cb3-3"></a>           <span class="dt">offset =</span> <span class="kw">log</span>(population),</span>
+<span id="cb3-4"><a href="#cb3-4"></a>           <span class="dt">data =</span> NM_popcas)</span></code></pre></div>
+<p>Then, to generate predictions of the number of cases, we can use the <code>extract_yhat</code> function from <code>statsurv</code>. Most of the functions in <code>statsurv</code> follow the same order of arguments: space_coord, time_coord, object, and data.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a>expected_cases &lt;-<span class="st"> </span><span class="kw">extract_yhat</span>(nm_county_fips_<span class="dv">2010</span>, year_coord, mod, NM_popcas)</span>
+<span id="cb4-2"><a href="#cb4-2"></a><span class="kw">plot</span>(<span class="kw">factor</span>(expected_cases<span class="op">$</span>county), expected_cases<span class="op">$</span>yhat)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>If we want to explore correlations in the model, we can use the <code>sample_yhat</code> function instead of <code>extract_yhat</code>.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a>expected_case_samples &lt;-<span class="st"> </span><span class="kw">sample_yhat</span>(nm_county_fips_<span class="dv">2010</span>, year_coord, mod, NM_popcas, </span>
+<span id="cb5-2"><a href="#cb5-2"></a>                                     <span class="dt">n_samples =</span> <span class="dv">20</span>)</span>
+<span id="cb5-3"><a href="#cb5-3"></a><span class="kw">head</span>(<span class="kw">as_tibble</span>(expected_case_samples))</span>
+<span id="cb5-4"><a href="#cb5-4"></a><span class="co">#&gt; # A tibble: 6 x 22</span></span>
+<span id="cb5-5"><a href="#cb5-5"></a><span class="co">#&gt;   county  year sample1 sample2 sample3 sample4 sample5 sample6 sample7 sample8</span></span>
+<span id="cb5-6"><a href="#cb5-6"></a><span class="co">#&gt;   &lt;chr&gt;  &lt;int&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;</span></span>
+<span id="cb5-7"><a href="#cb5-7"></a><span class="co">#&gt; 1 berna~  1973    14.1    13.0    12.4    13.0    16.1    13.5    13.8    14.2</span></span>
+<span id="cb5-8"><a href="#cb5-8"></a><span class="co">#&gt; 2 berna~  1974    14.5    13.4    12.8    13.4    16.3    13.9    14.3    14.5</span></span>
+<span id="cb5-9"><a href="#cb5-9"></a><span class="co">#&gt; 3 berna~  1975    15.2    14.2    13.5    14.0    16.9    14.6    15.1    15.1</span></span>
+<span id="cb5-10"><a href="#cb5-10"></a><span class="co">#&gt; 4 berna~  1976    15.9    14.9    14.2    14.6    17.5    15.3    15.9    15.8</span></span>
+<span id="cb5-11"><a href="#cb5-11"></a><span class="co">#&gt; 5 berna~  1977    16.6    15.7    14.9    15.3    18.0    16.1    16.7    16.4</span></span>
+<span id="cb5-12"><a href="#cb5-12"></a><span class="co">#&gt; 6 berna~  1978    17.3    16.5    15.6    15.9    18.6    16.8    17.5    17.0</span></span>
+<span id="cb5-13"><a href="#cb5-13"></a><span class="co">#&gt; # ... with 12 more variables: sample9 &lt;dbl&gt;, sample10 &lt;dbl&gt;, sample11 &lt;dbl&gt;,</span></span>
+<span id="cb5-14"><a href="#cb5-14"></a><span class="co">#&gt; #   sample12 &lt;dbl&gt;, sample13 &lt;dbl&gt;, sample14 &lt;dbl&gt;, sample15 &lt;dbl&gt;,</span></span>
+<span id="cb5-15"><a href="#cb5-15"></a><span class="co">#&gt; #   sample16 &lt;dbl&gt;, sample17 &lt;dbl&gt;, sample18 &lt;dbl&gt;, sample19 &lt;dbl&gt;,</span></span>
+<span id="cb5-16"><a href="#cb5-16"></a><span class="co">#&gt; #   sample20 &lt;dbl&gt;</span></span></code></pre></div>
+<p>With a baseline prediction out of the way, we’re ready to apply an alarm function to compare how our expected and actual number of cases compare.</p>
+<p>To use the alarm functions, we need to do a little work to get our baseline and case data in the format that the alarms expect. The counts and baseline data need to be formatted as matrices, with one column for each spatial location and one row for each time point. And we need to aggregate our spatial locations together into overlapping zones, if we want to use a scan-type alarm function.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a>wide_cases &lt;-<span class="st"> </span><span class="kw">pivot_for_scan</span>(NM_popcas, <span class="st">&quot;count&quot;</span>, nm_county_fips_<span class="dv">2010</span>, year_coord)</span>
+<span id="cb6-2"><a href="#cb6-2"></a>wide_baseline &lt;-<span class="st"> </span><span class="kw">pivot_for_scan</span>(expected_cases, <span class="st">&quot;yhat&quot;</span>, nm_county_fips_<span class="dv">2010</span>, year_coord)</span>
+<span id="cb6-3"><a href="#cb6-3"></a>zones &lt;-<span class="st"> </span><span class="kw">space_coord_to_zones</span>(nm_county_fips_<span class="dv">2010</span>, <span class="dt">max_k =</span> <span class="dv">10</span>)</span>
+<span id="cb6-4"><a href="#cb6-4"></a></span>
+<span id="cb6-5"><a href="#cb6-5"></a>scan_res &lt;-<span class="st"> </span><span class="kw">scan_eb_poisson</span>(wide_cases, zones, <span class="dt">baselines =</span> wide_baseline, <span class="dt">n_mcsim =</span> <span class="dv">100</span>)</span>
+<span id="cb6-6"><a href="#cb6-6"></a><span class="kw">print</span>(scan_res)</span>
+<span id="cb6-7"><a href="#cb6-7"></a><span class="co">#&gt; Data distribution:                Poisson</span></span>
+<span id="cb6-8"><a href="#cb6-8"></a><span class="co">#&gt; Type of scan statistic:           expectation-based</span></span>
+<span id="cb6-9"><a href="#cb6-9"></a><span class="co">#&gt; Setting:                          univariate</span></span>
+<span id="cb6-10"><a href="#cb6-10"></a><span class="co">#&gt; Number of locations considered:   32</span></span>
+<span id="cb6-11"><a href="#cb6-11"></a><span class="co">#&gt; Maximum duration considered:      19</span></span>
+<span id="cb6-12"><a href="#cb6-12"></a><span class="co">#&gt; Number of spatial zones:          288</span></span>
+<span id="cb6-13"><a href="#cb6-13"></a><span class="co">#&gt; Number of Monte Carlo replicates: 100</span></span>
+<span id="cb6-14"><a href="#cb6-14"></a><span class="co">#&gt; Monte Carlo P-value:              0.307</span></span>
+<span id="cb6-15"><a href="#cb6-15"></a><span class="co">#&gt; Gumbel P-value:                   NULL</span></span>
+<span id="cb6-16"><a href="#cb6-16"></a><span class="co">#&gt; Most likely event duration:       17</span></span>
+<span id="cb6-17"><a href="#cb6-17"></a><span class="co">#&gt; ID of locations in MLC:           2</span></span>
+<span id="cb6-18"><a href="#cb6-18"></a></span>
+<span id="cb6-19"><a href="#cb6-19"></a><span class="kw">extract_clusters</span>(scan_res, zones, <span class="st">&quot;score&quot;</span>, <span class="dt">allow_overlap =</span> <span class="ot">FALSE</span>, <span class="dt">max_allowed =</span> <span class="dv">5</span>)</span>
+<span id="cb6-20"><a href="#cb6-20"></a><span class="co">#&gt; # A tibble: 5 x 4</span></span>
+<span id="cb6-21"><a href="#cb6-21"></a><span class="co">#&gt;    zone duration score relrisk</span></span>
+<span id="cb6-22"><a href="#cb6-22"></a><span class="co">#&gt;   &lt;dbl&gt;    &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;</span></span>
+<span id="cb6-23"><a href="#cb6-23"></a><span class="co">#&gt; 1    11       17  4.83    2.37</span></span>
+<span id="cb6-24"><a href="#cb6-24"></a><span class="co">#&gt; 2    50        7  4.38    1.19</span></span>
+<span id="cb6-25"><a href="#cb6-25"></a><span class="co">#&gt; 3   177       13  4.23    1.53</span></span>
+<span id="cb6-26"><a href="#cb6-26"></a><span class="co">#&gt; 4   131        2  3.64    4.51</span></span>
+<span id="cb6-27"><a href="#cb6-27"></a><span class="co">#&gt; 5   268        1  1.29    2.99</span></span></code></pre></div>
+</div>
+<div id="performing-surveillance-repeatedly" class="section level4">
+<h4>Performing surveillance repeatedly</h4>
+<p>So far, the <code>statsurv</code> package has been a minor player in what we’re doing. The main power of the package comes when we don’t want to run this analysis once, we want to run it multiple times. In this example, that means checking every year to see if the number of observed cases matches what we would expect from our model.</p>
+<p>For the 3 main steps in surveillance - fitting a model, calculating baseline predictions, and applying an alarm function - <code>statsurv</code> provides a function to perform this analysis repeatedly. The three functions are <code>loop_model</code>, <code>loop_extract_yhat</code>, and <code>loop_alarm_function</code>. There’s also the general-purpose function <code>loop_over</code>, if none of the specialized functions are able to perform the analysis that’s required.</p>
+<p>Our first step is to repeatedly fit a model to the data. We’ll start by using the same model we used before, except that because we want to fit it repeatedly, we have to wrap it inside a function. This function has to follow 2 rules:</p>
+<ol style="list-style-type: decimal">
+<li><p>The first three arguments to the model_function must be: <code>space_coord</code>, <code>time_coord</code>, and <code>data_for_model</code>.</p></li>
+<li><p>The model_function must return a list, where the first element is the model fit object and is named “fit”, and the second element is the data.frame used by the fitting function and is named “data”.</p></li>
+</ol>
+<p>So, here is the same model we used before, but wrapped inside a function</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a>glm_func &lt;-<span class="st"> </span><span class="cf">function</span>(space_coord, time_coord, data_for_model) {</span>
+<span id="cb7-2"><a href="#cb7-2"></a>  mod &lt;-<span class="st"> </span><span class="kw">glm</span>(count <span class="op">~</span><span class="st"> </span>year,</span>
+<span id="cb7-3"><a href="#cb7-3"></a>             <span class="dt">family =</span> <span class="kw">poisson</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>),</span>
+<span id="cb7-4"><a href="#cb7-4"></a>             <span class="dt">offset =</span> <span class="kw">log</span>(population),</span>
+<span id="cb7-5"><a href="#cb7-5"></a>             <span class="dt">data =</span> data_for_model)</span>
+<span id="cb7-6"><a href="#cb7-6"></a>  to_return &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="dt">fit =</span> mod,</span>
+<span id="cb7-7"><a href="#cb7-7"></a>                    <span class="dt">data =</span> data_for_model)</span>
+<span id="cb7-8"><a href="#cb7-8"></a>  <span class="kw">return</span>(to_return)</span>
+<span id="cb7-9"><a href="#cb7-9"></a>}</span></code></pre></div>
+<p>Then we can use this function inside of loop_model:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a>fits_and_data &lt;-<span class="st"> </span><span class="kw">loop_model</span>(<span class="dt">space_coord =</span> nm_county_fips_<span class="dv">2010</span>, </span>
+<span id="cb8-2"><a href="#cb8-2"></a>                            <span class="dt">time_coord =</span> year_coord, </span>
+<span id="cb8-3"><a href="#cb8-3"></a>                            <span class="dt">data_for_model =</span> NM_popcas, </span>
+<span id="cb8-4"><a href="#cb8-4"></a>                            <span class="dt">outcome_col =</span> <span class="st">&quot;count&quot;</span>, </span>
+<span id="cb8-5"><a href="#cb8-5"></a>                            <span class="dt">path_to_model =</span> glm_func, </span>
+<span id="cb8-6"><a href="#cb8-6"></a>                            <span class="dt">use_cache =</span> <span class="ot">FALSE</span>, </span>
+<span id="cb8-7"><a href="#cb8-7"></a>                            <span class="dt">min_train =</span> <span class="dv">7</span>)</span>
+<span id="cb8-8"><a href="#cb8-8"></a>all_fits &lt;-<span class="st"> </span>fits_and_data[[<span class="dv">1</span>]]</span>
+<span id="cb8-9"><a href="#cb8-9"></a>all_data &lt;-<span class="st"> </span>fits_and_data[[<span class="dv">2</span>]]</span></code></pre></div>
+<p><code>loop_model</code> has an unfortunately large number of arguments, but only the first 5 are required. The first two are the space and time coordinates, and the third argument is the data to be used in fitting the model. The fourth argument, <code>outcome_col</code>, is the name of the column in <code>data_for_model</code> containing the outcome variable. The fifth argument should either be a function that performs the model fit, or the name of an .R file containing the function you want to run.</p>
+<p>The primary task that <code>loop_model</code> performs is running the model fit function on different subsets of the data. Each subset will include a number of data points to use to fit the model (specified by <code>min_train</code> and <code>max_train</code>) and a number of data points to generate predictions for (specified by <code>n_predict</code>). In our example, <code>min_train</code> is 7, so at least 7 years of data will be used whenever the model is fit. Our data starts in 1973, so the first year we can generate predictions for is 1980. <code>n_predict</code> is set to 1 by default, meaning we only predict one years worth of outcomes at a time.</p>
+<p><code>loop_model</code> returns a list with 2 components. The first component is a list of every model fit, and the second is a list of every subset of the data.</p>
+<p>These can be fed directly into loop_extract_yhat to generate predictions:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a>all_yhats &lt;-<span class="st"> </span><span class="kw">loop_extract_yhat</span>(<span class="dt">space_coord =</span> nm_county_fips_<span class="dv">2010</span>,</span>
+<span id="cb9-2"><a href="#cb9-2"></a>                               <span class="dt">time_coord =</span> year_coord,</span>
+<span id="cb9-3"><a href="#cb9-3"></a>                               <span class="dt">list_of_model_fits =</span> all_fits,</span>
+<span id="cb9-4"><a href="#cb9-4"></a>                               <span class="dt">list_of_model_data =</span> all_data,</span>
+<span id="cb9-5"><a href="#cb9-5"></a>                               <span class="dt">yhat_extractor_name =</span> <span class="st">&quot;extract&quot;</span>,</span>
+<span id="cb9-6"><a href="#cb9-6"></a>                               <span class="dt">use_surveillance_residuals =</span> <span class="ot">FALSE</span>,</span>
+<span id="cb9-7"><a href="#cb9-7"></a>                               <span class="dt">use_cache =</span> <span class="ot">FALSE</span>)</span></code></pre></div>
+<p>Now, instead of a single data frame containing predictions, we get a list of data frames, each one containing the predictions at a given time point.</p>
+<p>Finally, we feed our predictions as well as our case counts in <code>loop_alarm_function</code>. loop_alarm_function can take care of transforming our data into wide matrices, so we can just pass in the lists of baseline predictions and observed cases directly.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1"></a>all_alarms &lt;-<span class="st"> </span><span class="kw">loop_alarm_function</span>(<span class="dt">space_coord =</span> nm_county_fips_<span class="dv">2010</span>,</span>
+<span id="cb10-2"><a href="#cb10-2"></a>                                  <span class="dt">time_coord =</span> year_coord,</span>
+<span id="cb10-3"><a href="#cb10-3"></a>                                  <span class="dt">list_of_yhats =</span> all_yhats,</span>
+<span id="cb10-4"><a href="#cb10-4"></a>                                  <span class="dt">list_of_model_data =</span> all_data,</span>
+<span id="cb10-5"><a href="#cb10-5"></a>                                  <span class="dt">outcome_col =</span> <span class="st">&quot;count&quot;</span>,</span>
+<span id="cb10-6"><a href="#cb10-6"></a>                                  <span class="dt">alarm_function_name =</span> <span class="st">&quot;scan_eb_poisson&quot;</span>,</span>
+<span id="cb10-7"><a href="#cb10-7"></a>                                  <span class="dt">max_k =</span> <span class="dv">10</span>,</span>
+<span id="cb10-8"><a href="#cb10-8"></a>                                  <span class="dt">n_mcsim =</span> <span class="dv">25</span>,</span>
+<span id="cb10-9"><a href="#cb10-9"></a>                                  <span class="dt">use_cache =</span> <span class="ot">FALSE</span>)</span></code></pre></div>
+<p>And now we have our results! Although, to be fair, we’re probably going to want to display the results somehow. And <code>statsurv</code> has a plan for that as well.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1"></a>all_coeffs &lt;-<span class="st"> </span><span class="kw">list</span>()</span>
+<span id="cb11-2"><a href="#cb11-2"></a><span class="cf">for</span> (ind <span class="cf">in</span> <span class="kw">seq_len</span>(<span class="kw">length</span>(all_fits))) {</span>
+<span id="cb11-3"><a href="#cb11-3"></a>  <span class="cf">if</span> (<span class="kw">identical</span>(all_fits[[ind]], <span class="ot">NA</span>)) {</span>
+<span id="cb11-4"><a href="#cb11-4"></a>    <span class="cf">next</span></span>
+<span id="cb11-5"><a href="#cb11-5"></a>  }</span>
+<span id="cb11-6"><a href="#cb11-6"></a>    curr_label &lt;-<span class="st"> </span><span class="kw">names</span>(all_fits)[[ind]]</span>
+<span id="cb11-7"><a href="#cb11-7"></a>    curr_df &lt;-<span class="st"> </span><span class="kw">report_model_coeff</span>(all_fits[[ind]])</span>
+<span id="cb11-8"><a href="#cb11-8"></a>    curr_df[[<span class="st">&quot;year&quot;</span>]] &lt;-<span class="st"> </span><span class="kw">as.numeric</span>(<span class="kw">names</span>(all_fits)[[ind]])</span>
+<span id="cb11-9"><a href="#cb11-9"></a>    all_coeffs[[ind]] &lt;-<span class="st"> </span>curr_df</span>
+<span id="cb11-10"><a href="#cb11-10"></a>}</span>
+<span id="cb11-11"><a href="#cb11-11"></a>tall_coeff_df &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, all_coeffs)</span>
+<span id="cb11-12"><a href="#cb11-12"></a><span class="kw">library</span>(<span class="st">&quot;ggplot2&quot;</span>)</span>
+<span id="cb11-13"><a href="#cb11-13"></a><span class="kw">ggplot</span>(tall_coeff_df, <span class="kw">aes</span>(<span class="dt">x =</span> year, <span class="dt">y =</span> estimate, <span class="dt">color =</span> term, <span class="dt">group =</span> term)) <span class="op">+</span></span>
+<span id="cb11-14"><a href="#cb11-14"></a><span class="st">  </span><span class="kw">geom_point</span>() <span class="op">+</span></span>
+<span id="cb11-15"><a href="#cb11-15"></a><span class="st">  </span><span class="kw">geom_line</span>() <span class="op">+</span></span>
+<span id="cb11-16"><a href="#cb11-16"></a><span class="st">  </span><span class="kw">facet_wrap</span>(<span class="st">&quot;term&quot;</span>, <span class="dt">scales =</span> <span class="st">&quot;free&quot;</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>We’ll probably also want to look at where the cluster is located. We can find the most likely zone by using <code>extract_clusters</code>, and from there we can extract the most likely locations:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1"></a></span>
+<span id="cb12-2"><a href="#cb12-2"></a>mlc &lt;-<span class="st"> </span><span class="kw">extract_clusters</span>(all_alarms[[<span class="st">&quot;1989&quot;</span>]], zones, <span class="dt">max_allowed =</span> <span class="dv">1</span>)</span>
+<span id="cb12-3"><a href="#cb12-3"></a><span class="kw">print</span>(mlc)</span>
+<span id="cb12-4"><a href="#cb12-4"></a><span class="co">#&gt; # A tibble: 1 x 5</span></span>
+<span id="cb12-5"><a href="#cb12-5"></a><span class="co">#&gt;    zone duration score relrisk action_level</span></span>
+<span id="cb12-6"><a href="#cb12-6"></a><span class="co">#&gt;   &lt;dbl&gt;    &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;        &lt;dbl&gt;</span></span>
+<span id="cb12-7"><a href="#cb12-7"></a><span class="co">#&gt; 1   148        4  7.67    1.94         7.67</span></span>
+<span id="cb12-8"><a href="#cb12-8"></a>nm_county_fips_<span class="dv">2010</span>[zones[[mlc<span class="op">$</span>zone]], ]</span>
+<span id="cb12-9"><a href="#cb12-9"></a><span class="co">#&gt; Simple feature collection with 2 features and 1 field</span></span>
+<span id="cb12-10"><a href="#cb12-10"></a><span class="co">#&gt; Attribute-geometry relationship: 1 constant, 0 aggregate, 0 identity</span></span>
+<span id="cb12-11"><a href="#cb12-11"></a><span class="co">#&gt; geometry type:  POLYGON</span></span>
+<span id="cb12-12"><a href="#cb12-12"></a><span class="co">#&gt; dimension:      XY</span></span>
+<span id="cb12-13"><a href="#cb12-13"></a><span class="co">#&gt; bbox:           xmin: -106.4186 ymin: 35.04009 xmax: -105.7145 ymax: 36.00236</span></span>
+<span id="cb12-14"><a href="#cb12-14"></a><span class="co">#&gt; geographic CRS: WGS 84</span></span>
+<span id="cb12-15"><a href="#cb12-15"></a><span class="co">#&gt;       county                       geometry</span></span>
+<span id="cb12-16"><a href="#cb12-16"></a><span class="co">#&gt; 17 losalamos POLYGON ((-106.3995 35.8283...</span></span>
+<span id="cb12-17"><a href="#cb12-17"></a><span class="co">#&gt; 26   santafe POLYGON ((-106.1717 35.8281...</span></span></code></pre></div>
+<p>We can also look at how the alarm statistic in the most likely zone has changed over time:</p>
+</div>
+<div id="scan-statistics-scores-in-the-most-likely-cluster-over-time" class="section level3">
+<h3>Scan statistics scores in the most likely cluster over time</h3>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1"></a>alarm_df &lt;-<span class="st"> </span><span class="kw">extract_alarm_statistic</span>(nm_county_fips_<span class="dv">2010</span>, year_coord, all_alarms, mlc<span class="op">$</span>zone)</span>
+<span id="cb13-2"><a href="#cb13-2"></a><span class="kw">ggplot</span>(alarm_df, <span class="kw">aes</span>(<span class="dt">x =</span> surveillance_date, <span class="dt">y =</span> action_level, <span class="dt">color =</span> action_level)) <span class="op">+</span><span class="st"> </span></span>
+<span id="cb13-3"><a href="#cb13-3"></a><span class="st">  </span><span class="kw">geom_point</span>() <span class="op">+</span><span class="st"> </span></span>
+<span id="cb13-4"><a href="#cb13-4"></a><span class="st">  </span><span class="kw">geom_line</span>() <span class="op">+</span><span class="st"> </span></span>
+<span id="cb13-5"><a href="#cb13-5"></a><span class="st">  </span><span class="kw">geom_line</span>(<span class="kw">aes</span>(<span class="dt">y =</span> upper_control_limit), <span class="dt">color =</span> <span class="st">&quot;gray30&quot;</span>, <span class="dt">linetype =</span> <span class="st">&quot;dashed&quot;</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>And we see that while this cluster isn’t likely to be of concern now, it had a higher number of cases than your be expected by chance in 1989.</p>
+<div id="changing-the-bits-and-pieces" class="section level4">
+<h4>Changing the bits and pieces</h4>
+<p>The other strength of <code>statsurv</code> is the ability to swap out bits and pieces of your analysis while keeping the rest intact. As a simple example, we can change what alarm function we’re using, just by changing one argument to <code>loop_alarm_functions</code>:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1"></a><span class="co"># Use the negative binomial scan function instead of the expectation-based poisson</span></span>
+<span id="cb14-2"><a href="#cb14-2"></a>all_alarms &lt;-<span class="st"> </span><span class="kw">loop_alarm_function</span>(<span class="dt">space_coord =</span> nm_county_fips_<span class="dv">2010</span>,</span>
+<span id="cb14-3"><a href="#cb14-3"></a>                                  <span class="dt">time_coord =</span> year_coord,</span>
+<span id="cb14-4"><a href="#cb14-4"></a>                                  <span class="dt">list_of_yhats =</span> all_yhats,</span>
+<span id="cb14-5"><a href="#cb14-5"></a>                                  <span class="dt">list_of_model_data =</span> all_data,</span>
+<span id="cb14-6"><a href="#cb14-6"></a>                                  <span class="dt">outcome_col =</span> <span class="st">&quot;count&quot;</span>,</span>
+<span id="cb14-7"><a href="#cb14-7"></a>                                  <span class="dt">alarm_function_name =</span> <span class="st">&quot;scan_eb_negbin_fast&quot;</span>,</span>
+<span id="cb14-8"><a href="#cb14-8"></a>                                  <span class="dt">max_k =</span> <span class="dv">10</span>,</span>
+<span id="cb14-9"><a href="#cb14-9"></a>                                  <span class="dt">n_mcsim =</span> <span class="dv">25</span>,</span>
+<span id="cb14-10"><a href="#cb14-10"></a>                                  <span class="dt">use_cache =</span> <span class="ot">FALSE</span>)</span></code></pre></div>
+<p>We can also use a CUSUM or Shewhart type alarm function, instead of a scan-type alarm function:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1"></a>all_alarms_x150 &lt;-<span class="st"> </span><span class="kw">loop_alarm_function</span>(<span class="dt">space_coord =</span> nm_county_fips_<span class="dv">2010</span>,</span>
+<span id="cb15-2"><a href="#cb15-2"></a>                                  <span class="dt">time_coord =</span> year_coord,</span>
+<span id="cb15-3"><a href="#cb15-3"></a>                                  <span class="dt">list_of_yhats =</span> all_yhats,</span>
+<span id="cb15-4"><a href="#cb15-4"></a>                                  <span class="dt">list_of_model_data =</span> all_data,</span>
+<span id="cb15-5"><a href="#cb15-5"></a>                                  <span class="dt">outcome_col =</span> <span class="st">&quot;count&quot;</span>,</span>
+<span id="cb15-6"><a href="#cb15-6"></a>                                  <span class="dt">alarm_function_name =</span> <span class="st">&quot;parallel_cusum_poisson&quot;</span>,</span>
+<span id="cb15-7"><a href="#cb15-7"></a>                                  <span class="dt">max_k =</span> <span class="dv">10</span>,</span>
+<span id="cb15-8"><a href="#cb15-8"></a>                                  <span class="dt">n_mcsim =</span> <span class="dv">25</span>,</span>
+<span id="cb15-9"><a href="#cb15-9"></a>                                  <span class="dt">use_cache =</span> <span class="ot">FALSE</span>)</span>
+<span id="cb15-10"><a href="#cb15-10"></a>all_alarms_x150[[<span class="st">&quot;1991&quot;</span>]][<span class="dv">1</span><span class="op">:</span><span class="dv">10</span>, <span class="dv">1</span><span class="op">:</span><span class="dv">10</span>]</span>
+<span id="cb15-11"><a href="#cb15-11"></a><span class="co">#&gt;      harding    sierra     lea guadalupe  torrance    grant otero   sanjuan</span></span>
+<span id="cb15-12"><a href="#cb15-12"></a><span class="co">#&gt; 1973       0 0.0000000 0.00000         0 0.7257766 0.000000     0 1.1899042</span></span>
+<span id="cb15-13"><a href="#cb15-13"></a><span class="co">#&gt; 1974       0 0.0000000 0.00000         0 1.4432468 0.000000     0 1.2488884</span></span>
+<span id="cb15-14"><a href="#cb15-14"></a><span class="co">#&gt; 1975       0 0.5982765 0.00000         0 1.1446879 0.000000     0 0.0000000</span></span>
+<span id="cb15-15"><a href="#cb15-15"></a><span class="co">#&gt; 1976       0 2.1842681 0.00000         0 0.8291883 0.000000     0 0.0000000</span></span>
+<span id="cb15-16"><a href="#cb15-16"></a><span class="co">#&gt; 1977       0 2.7575731 0.00000         0 0.4958024 0.000000     0 0.2261966</span></span>
+<span id="cb15-17"><a href="#cb15-17"></a><span class="co">#&gt; 1978       0 3.3176738 1.88549         0 0.1435501 0.000000     0 0.0000000</span></span>
+<span id="cb15-18"><a href="#cb15-18"></a><span class="co">#&gt; 1979       0 3.8641942 0.00000         0 0.0000000 0.000000     0 0.0000000</span></span>
+<span id="cb15-19"><a href="#cb15-19"></a><span class="co">#&gt; 1980       0 3.3965869 0.00000         0 0.6069302 0.531299     0 0.0000000</span></span>
+<span id="cb15-20"><a href="#cb15-20"></a><span class="co">#&gt; 1981       0 3.9143958 0.00000         0 0.1918346 0.000000     0 0.0000000</span></span>
+<span id="cb15-21"><a href="#cb15-21"></a><span class="co">#&gt; 1982       0 4.4170960 0.00000         0 0.0000000 0.000000     0 0.0000000</span></span>
+<span id="cb15-22"><a href="#cb15-22"></a><span class="co">#&gt;      roosevelt     curry</span></span>
+<span id="cb15-23"><a href="#cb15-23"></a><span class="co">#&gt; 1973 0.0000000 0.0000000</span></span>
+<span id="cb15-24"><a href="#cb15-24"></a><span class="co">#&gt; 1974 0.2005856 0.0000000</span></span>
+<span id="cb15-25"><a href="#cb15-25"></a><span class="co">#&gt; 1975 0.0000000 0.9038535</span></span>
+<span id="cb15-26"><a href="#cb15-26"></a><span class="co">#&gt; 1976 0.1851144 1.7825447</span></span>
+<span id="cb15-27"><a href="#cb15-27"></a><span class="co">#&gt; 1977 1.3606276 3.6334156</span></span>
+<span id="cb15-28"><a href="#cb15-28"></a><span class="co">#&gt; 1978 0.5253028 4.4535294</span></span>
+<span id="cb15-29"><a href="#cb15-29"></a><span class="co">#&gt; 1979 1.6777391 3.2399734</span></span>
+<span id="cb15-30"><a href="#cb15-30"></a><span class="co">#&gt; 1980 2.8165242 0.9895427</span></span>
+<span id="cb15-31"><a href="#cb15-31"></a><span class="co">#&gt; 1981 1.9401810 0.0000000</span></span>
+<span id="cb15-32"><a href="#cb15-32"></a><span class="co">#&gt; 1982 3.0471653 3.6660158</span></span>
+<span id="cb15-33"><a href="#cb15-33"></a></span>
+<span id="cb15-34"><a href="#cb15-34"></a>all_alarms_x125 &lt;-<span class="st"> </span><span class="kw">loop_alarm_function</span>(<span class="dt">space_coord =</span> nm_county_fips_<span class="dv">2010</span>,</span>
+<span id="cb15-35"><a href="#cb15-35"></a>                                  <span class="dt">time_coord =</span> year_coord,</span>
+<span id="cb15-36"><a href="#cb15-36"></a>                                  <span class="dt">list_of_yhats =</span> all_yhats,</span>
+<span id="cb15-37"><a href="#cb15-37"></a>                                  <span class="dt">list_of_model_data =</span> all_data,</span>
+<span id="cb15-38"><a href="#cb15-38"></a>                                  <span class="dt">outcome_col =</span> <span class="st">&quot;count&quot;</span>,</span>
+<span id="cb15-39"><a href="#cb15-39"></a>                                  <span class="dt">alarm_function_name =</span> <span class="st">&quot;parallel_cusum_poisson&quot;</span>,</span>
+<span id="cb15-40"><a href="#cb15-40"></a>                                  <span class="dt">max_k =</span> <span class="dv">10</span>,</span>
+<span id="cb15-41"><a href="#cb15-41"></a>                                  <span class="dt">n_mcsim =</span> <span class="dv">25</span>,</span>
+<span id="cb15-42"><a href="#cb15-42"></a>                                  <span class="dt">use_cache =</span> <span class="ot">FALSE</span>,</span>
+<span id="cb15-43"><a href="#cb15-43"></a>                                  <span class="dt">extra_alarm_args =</span> <span class="kw">list</span>(<span class="dt">scaling =</span> <span class="fl">1.25</span>))</span>
+<span id="cb15-44"><a href="#cb15-44"></a>plot_df1 &lt;-<span class="st"> </span><span class="kw">as.data.frame</span>(all_alarms_x150[[<span class="st">&quot;1991&quot;</span>]]) <span class="op">%&gt;%</span></span>
+<span id="cb15-45"><a href="#cb15-45"></a><span class="st">  </span>tibble<span class="op">::</span><span class="kw">rownames_to_column</span>(<span class="dt">var =</span> <span class="st">&quot;year&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb15-46"><a href="#cb15-46"></a><span class="st">  </span>tidyr<span class="op">::</span><span class="kw">pivot_longer</span>(<span class="dt">cols =</span> <span class="op">-</span>year, <span class="dt">values_to =</span> <span class="st">&quot;alarm_statistic&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb15-47"><a href="#cb15-47"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">scaling =</span> <span class="fl">1.5</span>)</span>
+<span id="cb15-48"><a href="#cb15-48"></a></span>
+<span id="cb15-49"><a href="#cb15-49"></a>plot_df2 &lt;-<span class="st"> </span><span class="kw">as.data.frame</span>(all_alarms_x125[[<span class="st">&quot;1991&quot;</span>]]) <span class="op">%&gt;%</span></span>
+<span id="cb15-50"><a href="#cb15-50"></a><span class="st">  </span>tibble<span class="op">::</span><span class="kw">rownames_to_column</span>(<span class="dt">var =</span> <span class="st">&quot;year&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb15-51"><a href="#cb15-51"></a><span class="st">  </span>tidyr<span class="op">::</span><span class="kw">pivot_longer</span>(<span class="dt">cols =</span> <span class="op">-</span>year, <span class="dt">values_to =</span> <span class="st">&quot;alarm_statistic&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb15-52"><a href="#cb15-52"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">scaling =</span> <span class="fl">1.25</span>)</span>
+<span id="cb15-53"><a href="#cb15-53"></a>plot_df &lt;-<span class="st"> </span><span class="kw">rbind</span>(plot_df1, plot_df2)</span>
+<span id="cb15-54"><a href="#cb15-54"></a><span class="kw">ggplot</span>(dplyr<span class="op">::</span><span class="kw">filter</span>(plot_df, name <span class="op">==</span><span class="st"> &quot;santafe&quot;</span>),</span>
+<span id="cb15-55"><a href="#cb15-55"></a>       <span class="kw">aes</span>(<span class="dt">x =</span> <span class="kw">as.numeric</span>(year), <span class="dt">y =</span> alarm_statistic, <span class="dt">color =</span> <span class="kw">factor</span>(scaling), <span class="dt">group =</span> scaling)) <span class="op">+</span></span>
+<span id="cb15-56"><a href="#cb15-56"></a><span class="st">         </span><span class="kw">geom_point</span>() <span class="op">+</span></span>
+<span id="cb15-57"><a href="#cb15-57"></a><span class="st">  </span><span class="kw">geom_line</span>() <span class="op">+</span></span>
+<span id="cb15-58"><a href="#cb15-58"></a><span class="st">  </span><span class="kw">ggtitle</span>(<span class="st">&quot;CUSUM statistic in Santa Fe&quot;</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>These “parallel-type” alarm functions return a matrix, where each column is a location and each row is time, and the entry is the value of the alarm statistic.</p>
+<p>Some alarm functions have additional parameters to be passed to them. For example, the <code>parallel_cusum_poisson</code> alarm function takes the additional parameter “scaling”, which describes the expected magnitude of an outbreak - a value of 1.5 means that a 50% increase in the number of cases is expected in the event of an outbreak. These can be passed through <code>loop_alarm_function</code> via the <code>extra_alarm_args</code> argument:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1"></a>extra_alarm_args =<span class="st"> </span><span class="kw">list</span>(<span class="dt">scaling =</span> <span class="fl">1.25</span>)<span class="er">)</span></span></code></pre></div>
+<p>Finally, we can also swap out how we’re performing our modeling. Currently, <code>lm</code>, <code>glm</code>, <code>forecast::Arima</code>, and <code>INLA</code> models can be used with no modifications, as well as any other models with a <code>predict</code> function. Other modeling systems can also be used, you may have to supply your own prediction function to <code>loop_extract_yhat</code>.</p>
+<p>For example, we could add a sptially correlated component to our model using INLA</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1"></a>model_inla_bym &lt;-<span class="st"> </span><span class="cf">function</span>(space_coord, time_coord, data_for_model) {</span>
+<span id="cb17-2"><a href="#cb17-2"></a>  <span class="kw">library</span>(INLA)</span>
+<span id="cb17-3"><a href="#cb17-3"></a>  </span>
+<span id="cb17-4"><a href="#cb17-4"></a>  neighbors &lt;-<span class="st"> </span>spdep<span class="op">::</span><span class="kw">poly2nb</span>(space_coord, <span class="dt">queen =</span> <span class="ot">FALSE</span>)</span>
+<span id="cb17-5"><a href="#cb17-5"></a>  graph_file &lt;-<span class="st">  </span><span class="kw">tempfile</span>()</span>
+<span id="cb17-6"><a href="#cb17-6"></a>  spdep<span class="op">::</span><span class="kw">nb2INLA</span>(graph_file, neighbors)</span>
+<span id="cb17-7"><a href="#cb17-7"></a></span>
+<span id="cb17-8"><a href="#cb17-8"></a>  f &lt;-<span class="st"> </span>count <span class="op">~</span><span class="st"> </span>year <span class="op">+</span><span class="st">  </span></span>
+<span id="cb17-9"><a href="#cb17-9"></a><span class="st">    </span><span class="kw">f</span>(fips_id,</span>
+<span id="cb17-10"><a href="#cb17-10"></a>      <span class="dt">model =</span> <span class="st">&quot;bym&quot;</span>,</span>
+<span id="cb17-11"><a href="#cb17-11"></a>      <span class="dt">graph =</span> graph_file,</span>
+<span id="cb17-12"><a href="#cb17-12"></a>      <span class="dt">hyper =</span> <span class="kw">list</span>(<span class="dt">prec.unstruct =</span> <span class="kw">list</span>(<span class="dt">prior =</span> <span class="st">&quot;loggamma&quot;</span>,</span>
+<span id="cb17-13"><a href="#cb17-13"></a>                                        <span class="dt">param =</span> <span class="kw">c</span>(<span class="fl">3.2761</span>, <span class="fl">1.81</span>)),</span>
+<span id="cb17-14"><a href="#cb17-14"></a>                   <span class="dt">prec.spatial =</span> <span class="kw">list</span>(<span class="dt">prior =</span> <span class="st">&quot;loggamma&quot;</span>,</span>
+<span id="cb17-15"><a href="#cb17-15"></a>                                       <span class="dt">param =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))))</span>
+<span id="cb17-16"><a href="#cb17-16"></a>  fit_inla &lt;-<span class="st"> </span><span class="kw">inla</span>(<span class="dt">formula =</span> f,</span>
+<span id="cb17-17"><a href="#cb17-17"></a>                        <span class="dt">family =</span> <span class="st">&quot;poisson&quot;</span>,</span>
+<span id="cb17-18"><a href="#cb17-18"></a>                        <span class="dt">data =</span> data_for_model,</span>
+<span id="cb17-19"><a href="#cb17-19"></a>                        <span class="dt">control.family =</span> <span class="kw">list</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>),</span>
+<span id="cb17-20"><a href="#cb17-20"></a>                        <span class="dt">control.compute =</span> <span class="kw">list</span>(<span class="dt">config =</span> <span class="ot">TRUE</span>,</span>
+<span id="cb17-21"><a href="#cb17-21"></a>                                               <span class="dt">dic =</span> <span class="ot">TRUE</span>),</span>
+<span id="cb17-22"><a href="#cb17-22"></a>                        <span class="dt">control.predictor =</span> <span class="kw">list</span>(<span class="dt">compute=</span><span class="ot">TRUE</span>,</span>
+<span id="cb17-23"><a href="#cb17-23"></a>                                                 <span class="dt">link =</span> <span class="dv">1</span>),</span>
+<span id="cb17-24"><a href="#cb17-24"></a>                        <span class="dt">offset =</span> offset)</span>
+<span id="cb17-25"><a href="#cb17-25"></a>  </span>
+<span id="cb17-26"><a href="#cb17-26"></a>                        <span class="co"># control.fixed = list(mean = 0,</span></span>
+<span id="cb17-27"><a href="#cb17-27"></a>                        <span class="co">#                      prec = 0.1)</span></span>
+<span id="cb17-28"><a href="#cb17-28"></a>  <span class="kw">return</span>(<span class="kw">list</span>(<span class="dt">fit =</span> fit_inla,</span>
+<span id="cb17-29"><a href="#cb17-29"></a>              <span class="dt">data =</span> data_for_model))</span>
+<span id="cb17-30"><a href="#cb17-30"></a>}</span></code></pre></div>
+<p>With this new fitting function, we can run everything just the same as before:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1"></a>NM_popcas<span class="op">$</span>fips_id &lt;-<span class="st"> </span>gridcoord<span class="op">::</span><span class="kw">gc_get_match</span>(NM_popcas, nm_county_fips_<span class="dv">2010</span>)</span>
+<span id="cb18-2"><a href="#cb18-2"></a>fits_and_data &lt;-<span class="st"> </span><span class="kw">loop_model</span>(<span class="dt">space_coord =</span> nm_county_fips_<span class="dv">2010</span>, </span>
+<span id="cb18-3"><a href="#cb18-3"></a>                            <span class="dt">time_coord =</span> year_coord, </span>
+<span id="cb18-4"><a href="#cb18-4"></a>                            <span class="dt">data_for_model =</span> NM_popcas, </span>
+<span id="cb18-5"><a href="#cb18-5"></a>                            <span class="dt">outcome_col =</span> <span class="st">&quot;count&quot;</span>, </span>
+<span id="cb18-6"><a href="#cb18-6"></a>                            <span class="dt">path_to_model =</span> model_inla_bym, </span>
+<span id="cb18-7"><a href="#cb18-7"></a>                            <span class="dt">use_cache =</span> <span class="ot">FALSE</span>, </span>
+<span id="cb18-8"><a href="#cb18-8"></a>                            <span class="dt">min_train =</span> <span class="dv">7</span>,</span>
+<span id="cb18-9"><a href="#cb18-9"></a>                            <span class="dt">n_predict =</span> <span class="dv">1</span>)</span>
+<span id="cb18-10"><a href="#cb18-10"></a><span class="co">#&gt; Loading required package: Matrix</span></span>
+<span id="cb18-11"><a href="#cb18-11"></a><span class="co">#&gt; Loading required package: sp</span></span>
+<span id="cb18-12"><a href="#cb18-12"></a><span class="co">#&gt; Loading required package: parallel</span></span>
+<span id="cb18-13"><a href="#cb18-13"></a><span class="co">#&gt; This is INLA_19.09.03 built 2019-09-03 09:03:02 UTC.</span></span>
+<span id="cb18-14"><a href="#cb18-14"></a><span class="co">#&gt; See www.r-inla.org/contact-us for how to get help.</span></span>
+<span id="cb18-15"><a href="#cb18-15"></a>all_fits_inla &lt;-<span class="st"> </span>fits_and_data[[<span class="dv">1</span>]]</span>
+<span id="cb18-16"><a href="#cb18-16"></a>all_data_inla &lt;-<span class="st"> </span>fits_and_data[[<span class="dv">2</span>]]</span>
+<span id="cb18-17"><a href="#cb18-17"></a></span>
+<span id="cb18-18"><a href="#cb18-18"></a>all_yhat_inla &lt;-<span class="st"> </span><span class="kw">loop_extract_yhat</span>(<span class="dt">space_coord =</span> nm_county_fips_<span class="dv">2010</span>,</span>
+<span id="cb18-19"><a href="#cb18-19"></a>                               <span class="dt">time_coord =</span> year_coord,</span>
+<span id="cb18-20"><a href="#cb18-20"></a>                               <span class="dt">list_of_model_fits =</span> all_fits_inla,</span>
+<span id="cb18-21"><a href="#cb18-21"></a>                               <span class="dt">list_of_model_data =</span> all_data_inla,</span>
+<span id="cb18-22"><a href="#cb18-22"></a>                               <span class="dt">yhat_extractor_name =</span> <span class="st">&quot;extract&quot;</span>,</span>
+<span id="cb18-23"><a href="#cb18-23"></a>                               <span class="dt">use_surveillance_residuals =</span> <span class="ot">FALSE</span>,</span>
+<span id="cb18-24"><a href="#cb18-24"></a>                               <span class="dt">use_cache =</span> <span class="ot">FALSE</span>)</span>
+<span id="cb18-25"><a href="#cb18-25"></a></span>
+<span id="cb18-26"><a href="#cb18-26"></a>all_alarms_inla &lt;-<span class="st"> </span><span class="kw">loop_alarm_function</span>(<span class="dt">space_coord =</span> nm_county_fips_<span class="dv">2010</span>,</span>
+<span id="cb18-27"><a href="#cb18-27"></a>                                       <span class="dt">time_coord =</span> year_coord,</span>
+<span id="cb18-28"><a href="#cb18-28"></a>                                       <span class="dt">list_of_yhats =</span> all_yhat_inla,</span>
+<span id="cb18-29"><a href="#cb18-29"></a>                                       <span class="dt">list_of_model_data =</span> all_data_inla,</span>
+<span id="cb18-30"><a href="#cb18-30"></a>                                       <span class="dt">outcome_col =</span> <span class="st">&quot;count&quot;</span>,</span>
+<span id="cb18-31"><a href="#cb18-31"></a>                                       <span class="dt">alarm_function_name =</span> <span class="st">&quot;scan_eb_poisson&quot;</span>,</span>
+<span id="cb18-32"><a href="#cb18-32"></a>                                       <span class="dt">max_k =</span> <span class="dv">10</span>,</span>
+<span id="cb18-33"><a href="#cb18-33"></a>                                       <span class="dt">n_mcsim =</span> <span class="dv">25</span>,</span>
+<span id="cb18-34"><a href="#cb18-34"></a>                                       <span class="dt">use_cache =</span> <span class="ot">FALSE</span>)</span></code></pre></div>
+<p>And we can do all the same things we did before as far as generating reports:</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1"></a>all_coeffs &lt;-<span class="st"> </span><span class="kw">list</span>()</span>
+<span id="cb19-2"><a href="#cb19-2"></a><span class="cf">for</span> (ind <span class="cf">in</span> <span class="kw">seq_len</span>(<span class="kw">length</span>(all_fits_inla))) {</span>
+<span id="cb19-3"><a href="#cb19-3"></a>  <span class="cf">if</span> (<span class="kw">identical</span>(all_fits[[ind]], <span class="ot">NA</span>)) {</span>
+<span id="cb19-4"><a href="#cb19-4"></a>    <span class="cf">next</span></span>
+<span id="cb19-5"><a href="#cb19-5"></a>  }</span>
+<span id="cb19-6"><a href="#cb19-6"></a>    curr_label &lt;-<span class="st"> </span><span class="kw">names</span>(all_fits)[[ind]]</span>
+<span id="cb19-7"><a href="#cb19-7"></a>    curr_df &lt;-<span class="st"> </span><span class="kw">report_model_coeff</span>(all_fits_inla[[ind]])</span>
+<span id="cb19-8"><a href="#cb19-8"></a>    curr_df[[<span class="st">&quot;year&quot;</span>]] &lt;-<span class="st"> </span><span class="kw">as.numeric</span>(<span class="kw">names</span>(all_fits_inla)[[ind]])</span>
+<span id="cb19-9"><a href="#cb19-9"></a>    all_coeffs[[ind]] &lt;-<span class="st"> </span>curr_df</span>
+<span id="cb19-10"><a href="#cb19-10"></a>}</span>
+<span id="cb19-11"><a href="#cb19-11"></a>tall_coeff_df &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, all_coeffs)</span>
+<span id="cb19-12"><a href="#cb19-12"></a><span class="kw">library</span>(<span class="st">&quot;ggplot2&quot;</span>)</span>
+<span id="cb19-13"><a href="#cb19-13"></a><span class="kw">ggplot</span>(tall_coeff_df, <span class="kw">aes</span>(<span class="dt">x =</span> year, <span class="dt">y =</span> estimate, <span class="dt">color =</span> term, <span class="dt">group =</span> term)) <span class="op">+</span></span>
+<span id="cb19-14"><a href="#cb19-14"></a><span class="st">  </span><span class="kw">geom_point</span>() <span class="op">+</span></span>
+<span id="cb19-15"><a href="#cb19-15"></a><span class="st">  </span><span class="kw">geom_line</span>() <span class="op">+</span></span>
+<span id="cb19-16"><a href="#cb19-16"></a><span class="st">  </span><span class="kw">facet_wrap</span>(<span class="st">&quot;term&quot;</span>, <span class="dt">scales =</span> <span class="st">&quot;free&quot;</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1"></a>mlc &lt;-<span class="st"> </span><span class="kw">extract_clusters</span>(all_alarms_inla[[<span class="st">&quot;1989&quot;</span>]], zones, <span class="dt">max_allowed =</span> <span class="dv">1</span>)</span>
+<span id="cb20-2"><a href="#cb20-2"></a><span class="kw">print</span>(mlc)</span>
+<span id="cb20-3"><a href="#cb20-3"></a><span class="co">#&gt; # A tibble: 1 x 5</span></span>
+<span id="cb20-4"><a href="#cb20-4"></a><span class="co">#&gt;    zone duration score relrisk action_level</span></span>
+<span id="cb20-5"><a href="#cb20-5"></a><span class="co">#&gt;   &lt;dbl&gt;    &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;        &lt;dbl&gt;</span></span>
+<span id="cb20-6"><a href="#cb20-6"></a><span class="co">#&gt; 1   148        3  4.50    1.74         4.50</span></span>
+<span id="cb20-7"><a href="#cb20-7"></a>nm_county_fips_<span class="dv">2010</span>[zones[[mlc<span class="op">$</span>zone]], ]</span>
+<span id="cb20-8"><a href="#cb20-8"></a><span class="co">#&gt; Simple feature collection with 2 features and 1 field</span></span>
+<span id="cb20-9"><a href="#cb20-9"></a><span class="co">#&gt; Attribute-geometry relationship: 1 constant, 0 aggregate, 0 identity</span></span>
+<span id="cb20-10"><a href="#cb20-10"></a><span class="co">#&gt; geometry type:  POLYGON</span></span>
+<span id="cb20-11"><a href="#cb20-11"></a><span class="co">#&gt; dimension:      XY</span></span>
+<span id="cb20-12"><a href="#cb20-12"></a><span class="co">#&gt; bbox:           xmin: -106.4186 ymin: 35.04009 xmax: -105.7145 ymax: 36.00236</span></span>
+<span id="cb20-13"><a href="#cb20-13"></a><span class="co">#&gt; geographic CRS: WGS 84</span></span>
+<span id="cb20-14"><a href="#cb20-14"></a><span class="co">#&gt;       county                       geometry</span></span>
+<span id="cb20-15"><a href="#cb20-15"></a><span class="co">#&gt; 17 losalamos POLYGON ((-106.3995 35.8283...</span></span>
+<span id="cb20-16"><a href="#cb20-16"></a><span class="co">#&gt; 26   santafe POLYGON ((-106.1717 35.8281...</span></span></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1"></a>alarm_df &lt;-<span class="st"> </span><span class="kw">extract_alarm_statistic</span>(nm_county_fips_<span class="dv">2010</span>, year_coord, all_alarms_inla, mlc<span class="op">$</span>zone)</span>
+<span id="cb21-2"><a href="#cb21-2"></a><span class="kw">ggplot</span>(alarm_df, <span class="kw">aes</span>(<span class="dt">x =</span> surveillance_date, <span class="dt">y =</span> action_level, <span class="dt">color =</span> action_level)) <span class="op">+</span><span class="st"> </span></span>
+<span id="cb21-3"><a href="#cb21-3"></a><span class="st">  </span><span class="kw">geom_point</span>() <span class="op">+</span><span class="st"> </span></span>
+<span id="cb21-4"><a href="#cb21-4"></a><span class="st">  </span><span class="kw">geom_line</span>() <span class="op">+</span><span class="st"> </span></span>
+<span id="cb21-5"><a href="#cb21-5"></a><span class="st">  </span><span class="kw">geom_line</span>(<span class="kw">aes</span>(<span class="dt">y =</span> upper_control_limit), <span class="dt">color =</span> <span class="st">&quot;gray30&quot;</span>, <span class="dt">linetype =</span> <span class="st">&quot;dashed&quot;</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASAAAAEgCAMAAAAjXV6yAAACQFBMVEUAAAAAADoAAGYAOpAAZrYTK0MTLEQULEUULUYULkcVL0gWMEoWMUsWMkwXMk0XM04YNE8YNVEZNlIZN1QaOFUaOVYbO1gbO1kcPVsdPlwdP10eQF8eQWAfQmIfQ2QgRGUgRWYhRmghR2kiSGoiSWsiSmwjS24kTG8kTXElTnIlT3QmUHQmUHUmUXYnUngoVHooVXspVn0pV38qWIAqWYIrWoMsXIUsXYYtXoctX4kuYIouYYwvY44wZI8wZZExZpIxZ5QyaZYyaZczMzMza5k0bJo0bZw1bp41b582caE3cqM3c6Q4dKY4dac5d6k6AAA6ADo6AGY6OgA6OmY6OpA6eKs6eaw6kNs7eq47e688fbE9frM9f7Q+gLY+gbc/g7lAhLtAhbxBhr5Bh79CicFDisNDi8REjcZFjshFj8lFj8pGkMtGkc1Hk89IlNBIldJJl9RJmNVKmddLm9lLm9pMndxNTU1NTW5NTY5NbqtNjshNnt1Nn99OoeFOouNPo+VQpOZQpuhRp+pSqOtSqu1Tq+9UrPBUrvJVr/RWsPZWsfdmAABmADpmAGZmOgBmtrZmtv9uTU1uTW5uTY5ubqtuq8huq+SOTU2OTW6OTY6OyP+QOgCQOjqQOmaQkDqQkGaQtpCQ27aQ29uQ2/+rbk2rbm6rbo6ryKur5P+2ZgC22/+2///Ijk3I///bkDrb/7bb/9vb///kq27k///r6+v/tmb/yI7/25D/27b/29v/5Kv//7b//8j//9v//+T///8aUAVCAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAOTUlEQVR4nO2dh3/cSBWAd88xppneWWropvcaei++wMHSezW96S7BcPRiB9jAkVziA3IkQHyJl3Mie+9con8NvRmNNKN90kgzI2mkne8X7+7sGzk7n6dII+2oFzhy6TX9AWzHCZLgBElwgiQ4QRKcIAnlBfm+Dz8cqWSl6QoU5OMESXCCJDhBEpwgCU6QBDfMS3A1SIITJMEJkuAESXCCJNQoyHOCnCDACZKgLsjLj8+6IE8Sd4KcoDrSFSjIxwmSUKcg10kXF+Rh8RkX5DlBMkFMixOEpT0+7QmGnCBEUOntOy9ISDtBTpBSAT1J3AlK0q6TTqc9J0guKNKSFuRh+WdNkFBjPPENJwgTxPlpqaBrHnCevbxtK3pfTZBgJJVsqSBg98R1eLp6nnvPuKAWN7GDOy/D041/X+be1BHk4fGUofYIunaSPB2cZW3t7SE6/5uHvrSaPEFRBQr2/nKZq0VqNchL1yAvP38ralDUA1HifkhHEH1KCfJaK+jqGT5hRFBiKXmntYLiVgU16cZ/9Ib57D1nr7WdNO2C9v66BftBt8YDmZog3oiYbq+gDEwLavMwj6IlyMPj+RNowmFK3TQnqPC5em8WBLEyqgiaiSaWjOlTgjwnKPDF2Z8gceUE5QiKNZU5y1GBgnzqH+ZLCvLE3YAKFOTTuCA/XxDps2ZJkIfHMy9mmGVBRS4LjnYLuF2CYtx3TzC5+WJWNDs0HalHEDe3UUyQuHPIvy5Ejpz8cPOCaKecCMpocoKi2RLExdnpMQP7QZPlXq83DILDjV7vCEkNoaw0GRb7QvjOSNAAoZuuHG6EGwVjeAFJywQxSen5ovKC9tdHUTGPkNdQzvAHkvAzWZ7bhjAnCN4OxnPb4b8wy5AlmxKUnUYFTU9/JP0Vyv3btNisfJGgHXASPkyWR0LrYaHQJZ8zStoliKUl5+olgkINYRPr03JygsLqEXsTBY17hCG0MahIUbKrgvbX+0lFKCYIQsTs3L3UUbyhPYIyLixHJ/HjvCjExE5/qomF2kgTmxZEQsTtqQvHrwQs2ZCgjClVlSvvMwRBBVrux71y1FHHnfS0oMON0CnRsgnjHEtaJyhjCrasoLCUvf7doZVoXIdSC8P8lCASItVmh4z/UdIuQexyaTcflH3WAjvTOoOCstPTgryM/Oz6Rg3I7nYvallFsWWYr0OQErYJyj54bY0gk0xdJJR91VBT1xPVUYOyL7GbuuJMOqpVoCAfywRJ00qFhCOt5Fi+HN0QtIbDwpsjfLMiNCuITxc7FY1/pj/gRNHDu8qM6w0IKpbWEQT8XoCP7K/3+PnEcnRD0O9woig59FKtRd0Q9FscPotqP2SPoGJp/DP9BofPMtuCfo0TRWE67fDvFg/z1Qv6FQ4Lj0seoHZP0C9xFJ0IxILIWEjJ3+m0UdAvcIwKKoyNgn6Oo+mG0A1Bt+PoqaGIgsLebBSfMWqRoJ/hGBe0Ofe/9RE5Td0yQT/FMS1of30EJ5R22tdJr+I4QYyf4JgWFIyhie2vD3O3sFHQj3GMCyLXSPTy/Vgp6Ec45gUVwUZBP8TRdEPohqAf4Gi6IYidtKR1WSvo+zimBZHZf+m0iY2CvodjXFBAryPJnxmwUdB3cZIMhxsG56Q3m98PWltbKyXoOzhJhrGxSftN6Sm2GgSRk1plBH0bJ45PPvInI4LE9pUsinNw1ksWYbBREPAtASF0eNe/jDQxcjl2QrzWwo1L59k6J5YK+iYOC4+HRvsgpiVezuTg3BZZX6A2Qf7aSrk+6Bs4UXRyy7YpQfx8ULIozt4d16NlGHSXxynKSrAmz8TxdZwoSq8SL7KPh5A9H5QsigNrd7ClcuqpQSu+X6qJfQ0nyWCmBiHTHaQfSmqQrYK+ilOXoPr7oFAQZ0gu6Cs4ik4yBYnzQcmiODcunal3FCst6Ms4xgWJ80F0URyoOnXvB4GfUoK+hGNeUBHqEpQYkgv6Io6mG0I3BH0BR9MNwcpTz1RQbEgu6PM4RgUVxkZBn8PRU0PBBe3/MbsSVS9ohb1YKyroszjdF7S6WkzQZ3C6Lmh1lRqSC/o0TvcFrRYU9CkcJ4jxSZyOClqJ06tF+6BP4HRekL86Fcc/08dxWHhH/bssHRH0MZwoOjl+JRjnX/RUVlAedQryCzaxj+JwOUCSvqDoW68NH2ooCAI+JJCOGqlBsovvKFULWvHLC/ogThyHVRkMCEqd9mmRoA/g8GU7ZeDbPsUmbm0U9H4cPouRL7NIrk60V9D7cFix5rbN1CA2JdRsJ60i6L04LNylL7OsrKgIeg+OohMBywStAOUFvRtH0w1h6tRzs1e5rqwMBEF+sYPVd+EYFzSma8E1eJ20oqB34pgWFO0HNXqlfSjILy/oHThdFOQPfAVBb8MxLahYE6uYgZgs9oWUt+KY+DyWddKKNegtOOYFFaFaQQNfRdCbcfTUULoh6BiOphsCd+p5ZMOhhpqgN+EYFVSYegWBIbmgN+JouiHYNsyrCXoDjhPEeD2OWUHj+PKXJr/1rCbodTgsPFk2s8CSDVOuaoJei8PKdQpbxVZBUDFsFPQanCi6Q9YHNjHlCuuXS09t2CgIeLVAOmpkyjXYBDfNrrygJuhVOEkGensIXUEWjGKD6fhqAUGvxOFKpnwA3g1Br8BhYXLbCAOCLJhRVBT0chwDfmxbeUFR0Mtwoijdw+vGKniKgl6Ko6ZEpBuCXoKj6YZg2eUvioJejGNaELlL0kh2wGGjoBfhmBYEajaH9D4w7RL0QpwqBI2P2LYf5K/KBb0Ax7QgONQI7UiWwatS0ACLFxD0fBzjguCIZbPJxU1UBT0Px7igQtgo6Lk4mm4I3RD0HBxNN4RuCHo2jqYbQjcEPQtH0w0hR9De6WjtDm6hHEsFPROnWkGwGAWs3xFwC+XYKugZOEkG5W8i5AjaPcnUJAvlNCIo+kpLnqCn48TxHdPf9mHQJU2ShXKqXh5ngL4rv0boaTgsvNm/UEENCuiiHQG/UA5Qew06tnpMVoOApwqkglU0Mag5Z5JE3A9VKGiAxY+FghJD+Cd9Ck7FgvZO831zg4KOSQUNcKoVlPhJFsqxVdCTcaoVBDs/Yd8My+PQhXIaEuTzfjIEPQmnWkFZ1C7ID6SCnojjBDGegKPoRKAbgh6Po+mG0A1Bj8PRdEPohqDH4mi6IbRCkC8b5h+Do+mG0A1Bj8bRdEOwSdAgMy4T9CgcTTeEbgh6JI6mG0I3BD0CR9MNoR2CEkP4Z3o4jqYbQjcEPQxH0w2hG4IeiqPphtANQQ/B0XRDaImg2BD+mR6Mw8L76z3JfQm7LuhBOFEUVrVp5xJdS0tLZgQ9ECeKwopsZpboqlnQ0hI1FIh+FAQBDxDgI5NbDC2PUwxbBWVjbP2gYjQjiBlSKWNra1CqD6pMUGv7IH/er0UQXFnYzlGsJkHt3Q+qS5AOrRF09NjRlggyyHywxKXwa18ijoaCjlb8cVAarkF+0WH+KNCOGmROUOjHCSouaJCfn/pxgmTbV6AgHydIQtOCwBBJDwb5w/wMCiJ+mCByyZwTlCdo0QlygjQE+YuuD5IIKrZ9BQryaU7QfJRaIulFaX4nyAlygtQFLcrzO0FOEC7IX3KCsHTsBwQtTsedICeouKBFJO4EOUFFBS0uOUHTac4P4AQ5QU4Qw7QgP+3HCUoJKrV9BQryyRF0cNY7cT31KlAQtLCw0ElBNy6dD66dFF8BZQUtLFBD8/Pz0WMQvW65oINzWwF8aZ5/BSgJWgAnoRXyGNDXbRe0d8f1aPWX5JXK6i/EDzzOi2h86DrJWT/oBNOSvALK1iA/bmEzUIOA0oLY/I/rg+pI1yKFJ28UOxOPYmc0RrHOCor2fqDq6O0HdVZQBk6QBCdIghMkwQmS4ASVRnb0UXW8UpwgCU6QBCdIQqPf9mkDTpAEJ0iCEyTBCZKgLIjMoO2dhpsBRMviivcG4OLsSZg1QeKltq8LVUG78JEPzoZW6GeGeWv+3gB8HKZrwyfh7BESz96ePolnn+pCUdDVW/8b/oWTyWp45O8NIMTJ07ktfuYWi+dvf+dlcea3LrSaWCII/rLJvQFS8aiGiHP/0/HM7cUn9bIqoSWI1H1Yipt8bvHeAHycdh7i2aPpeOb20ZO4fV1od9J/gyLtxp1n3I9wcSj57m1b0zVIjGduz7K1rwYB0DMEV+PbJ4gFpPHoTy/2IdPxzO2jpxb2QaTzOMlu3SLeG4CLRzVEPHs0Hc/cPnoSt68LvRq065E9k+jPL9wbgI/v0sD0fpAYz9ue/Ddt2g+aGZwgCU6QBCdIghMkwQmSUKWgyc0X6b9SW/F3Ur7vHtOfqTQV1yA9QWU3rQInSIKyoMlyr9cb0TKAhuP/6PU/PAwD45uuHG704K6LSRMjmYfhGxeWYaMAMsDKj1HGmP31Xv+fsCXJD4/DqTw1oyqIilkexYKWwwLDfcYPN4aHG/R1LAju0w7iJsthBiLwCLl3O8vIfun++jD8uelKnD/85ek8daMsKFobNRE0oonwhzSSsJCxoPu3AyETazosI/ulJB2KifOH+dJ56ka5iW3SRhILgmeyaOrc9rhHGHKj2E6Y7l9kmVk3wzKy30kqClGf5E/nqRuNTjrsMGgrSCrFzty91BHJwDWx/sU4Ey8o1XKYID5/g62LoDWK0WbECdo/BXd83enTFhQLghWv4V0xcxBnZBBx4QOfP52nblQFkbKQygHjTJ+VeRPa3eFGWEBavkgQVIjlRBB0vPSHZmS/dH/9COmkWX7akYt56ka5BtFegg73fz7FBO3AIE5G5riRQCTssPp3J9VNGOb5srNhPspPfKfz1Iw7FpPgBEmwQRDZb+412pCysUGQ1ThBEpwgCU6QBCdIghMkwQmS8H9ek9jjCUEoxgAAAABJRU5ErkJggg==" /><!-- --></p>
+<p>With this new model, the alarm statistic never appears to get out of hand.</p>
+</div>
+</div>
+</div>
+<div id="other-features" class="section level2">
+<h2>Other features</h2>
+<p>There are a number of other features inside the <code>statsurv</code> package that might be useful depending on what you’re trying to do. Here are a few of them:</p>
+<ol style="list-style-type: decimal">
+<li><p><strong>Caching</strong>: If you call any of the <code>loop_</code> functions with the argument <code>use_cache = TRUE</code>, then the results will be stored in a file on your computer. If the function is called with the same arguments, then the results will be loaded from disk, skipping the computations. If there are revisions to the past data (for example, if there was a delay in processing all of the lead tests last quarter), the system is sophisticated enough to only re-run the model that include the revised data points.</p></li>
+<li><p><strong>Applying the same model to different spatial locations</strong>: Some models - mostly notably the CDC’s ARIMA model for lead - can only handle a single spatial location at a time. If you call <code>loop_model</code> with <code>model_arity = &quot;uni&quot;</code>, then <code>loop_model</code> will fit loop over both spatial regions and temporal windows. THe fits and data will be returned as “gridlists”, objects that act like two-dimensional lists. <code>loop_extract_yhat</code> and <code>loop_alarm_function</code> can both handle these gridlists as input.</p></li>
+<li><p><strong>Changing how spatial data is aggregated</strong>: The case I have in mind is obtaining census information for the Colorado Health Statistics Regions. Taking ACS data at the county level and creating averages at the HSR level is difficult, because different counties have different populations and should probably be weighted differently. The <code>gc_rebase</code> command from the <code>gridcoord</code> package is designed for these situations, and can also handle cases where the original spatial units overlap with multiple of the new sptial units.</p></li>
+</ol>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

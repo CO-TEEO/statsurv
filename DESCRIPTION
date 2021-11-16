@@ -1,0 +1,49 @@
+Package: statsurv
+Title: Tools for Spatiotemporal Statistical Surveillance
+Version: 0.2.0.9000
+Authors@R:
+    person(given = "Paul",
+           family = "Romer Present",
+           role = c("aut", "cre"),
+           email = "paul.romerpresent@state.co.us")
+Description: A set of tools for performing routine statistical surveillance.
+    staturv makes it easy to repeatedly apply the key tools of statistical surveillance,
+    while remaining flexible enough to be incorporated into almost any workflow.
+    Spatsurv can support several different model types for predicting the number of incidents, 
+    including lm, glm, INLA, and ARIMA models, and can detect anomalies using scan statistics,
+    CUSUM charts, or Shewhart charts.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports:
+    lubridate,
+    gridcoord,
+    raster,
+    sp,
+    rlang,
+    tibble,
+    spdep,
+    scanstatistics,
+    arm,
+    broom,
+    simplecache,
+    magrittr,
+    dplyr,
+    tidyr,
+    methods,
+    Matrix,
+    MASS,
+    stats,
+    sf
+Suggests:
+    testthat (>= 2.1.0),
+    knitr,
+    rmarkdown,
+    forecast,
+    rgdal,
+    INLA,
+    lme4
+RoxygenNote: 7.1.0
+VignetteBuilder: knitr
+Depends: 
+    R (>= 2.10)

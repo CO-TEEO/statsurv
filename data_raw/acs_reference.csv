@@ -1,0 +1,59 @@
+api_var,label,concept,human_readable_name,notes
+B01001_001,Estimate!!Total,SEX BY AGE,pop_total,
+B01001_003,Estimate!!Total!!Male!!Under 5 years,SEX BY AGE,pop_male_under5,These are under 5 - I thought we were using under 6?
+B01001_027,Estimate!!Total!!Female!!Under 5 years,SEX BY AGE,pop_female_under5,
+B02008_001,Estimate!!Total,WHITE ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES,pop_white,
+B02009_001,Estimate!!Total,BLACK OR AFRICAN AMERICAN ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES,pop_aa,"Yes, variable VD01 is the african american population in this table, and not the total population"
+B02010_001,Estimate!!Total,AMERICAN INDIAN AND ALASKA NATIVE ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES,pop_amerindian,
+B02011_001,Estimate!!Total,ASIAN ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES,pop_asian,
+B03002_003,Estimate!!Total!!Not Hispanic or Latino!!White alone,HISPANIC OR LATINO ORIGIN BY RACE,pop_nhwhite,
+B03002_004,Estimate!!Total!!Not Hispanic or Latino!!Black or African American alone,HISPANIC OR LATINO ORIGIN BY RACE,pop_nhaa,
+B03002_005,Estimate!!Total!!Not Hispanic or Latino!!American Indian and Alaska Native alone,HISPANIC OR LATINO ORIGIN BY RACE,pop_nhamerindian,
+B03002_006,Estimate!!Total!!Not Hispanic or Latino!!Asian alone,HISPANIC OR LATINO ORIGIN BY RACE,pop_nhasian,
+B03002_012,Estimate!!Total!!Hispanic or Latino,HISPANIC OR LATINO ORIGIN BY RACE,pop_hispanic2,
+B03003_003,Estimate!!Total!!Hispanic or Latino,HISPANIC OR LATINO ORIGIN,pop_hispanic,
+B06003_013,Estimate!!Total!!Foreign born,PLACE OF BIRTH BY SEX IN THE UNITED STATES,pop_foreignborn,This B table is missing VD02 for some reason
+B07003_001,Estimate!!Total,GEOGRAPHICAL MOBILITY IN THE PAST YEAR BY SEX FOR CURRENT RESIDENCE IN THE UNITED STATES,popover1_total,Could this be a sneaky way to calculate the population < 1 ? 
+B07003_007,Estimate!!Total!!Moved within same county,GEOGRAPHICAL MOBILITY IN THE PAST YEAR BY SEX FOR CURRENT RESIDENCE IN THE UNITED STATES,popover1_movedwicounty,This is also missing VD02
+B07003_010,Estimate!!Total!!Moved from different county within same state,GEOGRAPHICAL MOBILITY IN THE PAST YEAR BY SEX FOR CURRENT RESIDENCE IN THE UNITED STATES,popover1_movedcounty,
+B07003_013,Estimate!!Total!!Moved from different state,GEOGRAPHICAL MOBILITY IN THE PAST YEAR BY SEX FOR CURRENT RESIDENCE IN THE UNITED STATES,popover1_movedstate,
+B08201_002,Estimate!!Total!!No vehicle available,HOUSEHOLD SIZE BY VEHICLES AVAILABLE,households_novehicle,
+B09001_003,Estimate!!Total!!In households!!Under 3 years,POPULATION UNDER 18 YEARS BY AGE,pop_under3,
+B09001_004,Estimate!!Total!!In households!!3 and 4 years,POPULATION UNDER 18 YEARS BY AGE,pop_34,
+B09001_005,Estimate!!Total!!In households!!5 years,POPULATION UNDER 18 YEARS BY AGE,pop_5,
+B11001_002,Estimate!!Total!!Family households,HOUSEHOLD TYPE (INCLUDING LIVING ALONE),households_family,
+B11001_005,Estimate!!Total!!Family households!!Other family!!Male householder no wife present,HOUSEHOLD TYPE (INCLUDING LIVING ALONE),households_family_singlemale,
+B11001_006,Estimate!!Total!!Family households!!Other family!!Female householder no husband present,HOUSEHOLD TYPE (INCLUDING LIVING ALONE),households_family_singlefemale,
+B17017_002,Estimate!!Total!!Income in the past 12 months below poverty level,POVERTY STATUS IN THE PAST 12 MONTHS BY HOUSEHOLD TYPE BY AGE OF HOUSEHOLDER,households_belowfpl,
+B17020_001,Estimate!!Total,POVERTY STATUS IN THE PAST 12 MONTHS BY AGE,poppov_total,popov = population for whom povery status could be determined
+B17020_002,Estimate!!Total!!Income in the past 12 months below poverty level,POVERTY STATUS IN THE PAST 12 MONTHS BY AGE,poppov_belowfpl,
+B17020_003,Estimate!!Total!!Income in the past 12 months below poverty level!!Under 6 years,POVERTY STATUS IN THE PAST 12 MONTHS BY AGE,poppov_belowfpl_under6,
+B17024_002,Estimate!!Total!!Under 6 years,AGE BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS,poppov_under6,
+B17024_003,Estimate!!Total!!Under 6 years!!Under .50,AGE BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS,poppov_under6_less050fpl,
+B17024_004,Estimate!!Total!!Under 6 years!!.50 to .74,AGE BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS,poppov_under6_050074fpl,
+B17024_005,Estimate!!Total!!Under 6 years!!.75 to .99,AGE BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS,poppov_under6_075099fpl,
+B17024_006,Estimate!!Total!!Under 6 years!!1.00 to 1.24,AGE BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS,poppov_under6_100124fpl,
+B17024_007,Estimate!!Total!!Under 6 years!!1.25 to 1.49,AGE BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS,poppov_under6_125149fpl,
+B17024_008,Estimate!!Total!!Under 6 years!!1.50 to 1.74,AGE BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS,poppov_under6_150174fpl,
+B17024_009,Estimate!!Total!!Under 6 years!!1.75 to 1.84,AGE BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS,poppov_under6_175184fpl,
+B17024_010,Estimate!!Total!!Under 6 years!!1.85 to 1.99,AGE BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS,poppov_under6_185199fpl,
+B19057_002,Estimate!!Total!!With public assistance income,PUBLIC ASSISTANCE INCOME IN THE PAST 12 MONTHS FOR HOUSEHOLDS,households_publicassistance,
+B19058_002,Estimate!!Total!!With cash public assistance or Food Stamps/SNAP,PUBLIC ASSISTANCE INCOME OR FOOD STAMPS/SNAP IN THE PAST 12 MONTHS FOR HOUSEHOLDS,households_cashsnap,
+B25002_003,Estimate!!Total!!Vacant,OCCUPANCY STATUS,hu_vacant,
+B25003_001,Estimate!!Total,TENURE,huocc_total,huocc = occupied housing units
+B25003_002,Estimate!!Total!!Owner occupied,TENURE,huocc_owner,
+B25003_003,Estimate!!Total!!Renter occupied,TENURE,huocc_renter,
+B25034_001,Estimate!!Total,YEAR STRUCTURE BUILT,hu_total,hu = housing units
+B25034_007,Estimate!!Total!!Built 1970 to 1979,YEAR STRUCTURE BUILT,hu_7079,
+B25034_008,Estimate!!Total!!Built 1960 to 1969,YEAR STRUCTURE BUILT,hu_6069,
+B25034_009,Estimate!!Total!!Built 1950 to 1959,YEAR STRUCTURE BUILT,hu_5059,
+B25034_010,Estimate!!Total!!Built 1940 to 1949,YEAR STRUCTURE BUILT,hu_4049,
+B25034_011,Estimate!!Total!!Built 1939 or earlier,YEAR STRUCTURE BUILT,hu_39rlier,
+S1101_C01_001,Estimate!!Total!!HOUSEHOLDS!!Total households,HOUSEHOLDS AND FAMILIES,households_total,
+S1501_C01_001,Estimate!!Total!!Population 18 to 24 years,EDUCATIONAL ATTAINMENT,pop1824_total,pop1824 = population between 18 and 24
+S1501_C01_002,Estimate!!Total!!Population 18 to 24 years!!Less than high school graduate,EDUCATIONAL ATTAINMENT,pop1824_less12grade,
+S1501_C01_006,Estimate!!Total!!Population 25 years and over,EDUCATIONAL ATTAINMENT,popover25_total,popover25 = population over the age of 25
+S1501_C01_007,Estimate!!Total!!Population 25 years and over!!Less than 9th grade,EDUCATIONAL ATTAINMENT,popover25_less9grade,
+S1501_C01_008,Estimate!!Total!!Population 25 years and over!!9th to 12th grade no diploma,EDUCATIONAL ATTAINMENT,popover25_912grade,
+S1901_C01_012,Estimate!!Households!!Median income (dollars),INCOME IN THE PAST 12 MONTHS (IN 2017 INFLATION-ADJUSTED DOLLARS),households_medianincome,
+S2301_C04_001,Estimate!!Unemployment rate!!Population 16 years and over,EMPLOYMENT STATUS,popover16_pcntunemployed,

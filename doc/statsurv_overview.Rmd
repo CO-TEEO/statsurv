@@ -1,0 +1,520 @@
+---
+title: "An introduction to `statsurv`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{An introduction to `statsurv`}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+```{r setup}
+library(statsurv)
+```
+
+## Overview
+
+Statistical surveillance is any sort of systematic, ongoing analysis aimed at detecting changes in
+outcomes as they occur. This process requires developing a model to predict the outcome of
+interest, and then systematically examining the measured outcomes as they occur and determining when
+the observed outcomes no longer match the predicted outcomes. If the amount of data reported is
+large or if there is significant natural variability in the rate of case events, statistical
+techniques can be extremely helpful in determining when a change in the number of events is
+important, and when it is merely noise 
+
+The key steps in applying statistical surveillance are as follows:
+
+1. Collecting and standardizing measurements of the outcome variable
+
+2. Developing a statistical model to predict the outcome variable
+
+3. Using the statistical model to predict the outcome variable in a given region or time period. 
+
+4. Applying an alarm function to compare the actual outcome with the predictions, and determine the
+likelihood of the actual outcome happening by chance given the predictions. 
+
+5. Repeat this process continually as new data is collected. 
+
+The `statsurv` package is designed to help with every aspect of this process, from data collection 
+or aggregation, to modeling, predicting, and applying alarm functions. And it is designed to simplify
+applying these steps consistently and repeatedly. `statsurv` also depends on two additional packages:
+`gridcoord`, which helps organize the spatial and temporal coordinates, and `simplecache`, which
+can help smartly save the results. 
+
+## Installation
+
+The `statsurv` package currently likes on the J: drive, at "J:/COEPHT/EH17-1702/Colorado Tracking
+Activities/Statistical Surveillance". Because it is not currently on CRAN, installation is slightly 
+more involved than for a typical R package. The easiest way to install it is to run the file
+"installation_script.R", located in the same folder. With your permission, this package will install
+`statsurv` and all of its dependencies (including 2 other packages in the same folder) to your R
+library. 
+
+If you wish to install the package without the script, the simplest way is to use the `install_local`
+command from the `devtools` package. 
+
+## Using the `statsurv` package
+
+As an example of how to use the `statsurv` package, we're going to use the classic example of the 
+number of brain cancer cases in New Mexico. This dataset was studied by Kulldorff in developing 
+SaTScan and is also used by the `scanstatistics` package as their example. 
+
+Before we start performing surveillance, we need to load the data.  The populations and case counts
+are included in `NM_popcas` from the `scanstatistics` package, and county bondaries are included in
+the `statsurv` package. We're also going to generate defined space and time coordinates for our data,
+using the `gridcoord` package.
+
+```{r data-loading}
+library("scanstatistics")
+library("lubridate")
+library("gridcoord")
+library("dplyr")
+library("sf")
+
+data(NM_popcas)
+NM_popcas <- NM_popcas %>%
+  mutate(county = as.character(county))
+head(NM_popcas)
+
+nm_county_fips_2010 <- statsurv::nm_county_fips_2010 %>%
+  mutate(county_name = gsub(" ", "", tolower(county_name))) %>% #Remove spaces, make lower case 
+  rename(county = county_name) %>%
+  dplyr::filter(county != "cibola") %>%
+  gc_gridcoord("county")
+
+
+
+yr_start <- min(NM_popcas$year)
+yr_fin <- max(NM_popcas$year)
+date_start <- ymd(paste0(yr_start, "-01-01"))
+date_fin <- ymd(paste0(yr_fin, "-12-31"))
+year_coord <- generate_date_range(date_start, date_fin, time_division = "year") %>%
+  rename(year = date_label) %>%
+  mutate(year = as.numeric(year))
+```
+
+In this case, the data is already provided to us at the county level. If instead we had individual
+case locations, with associated lat/lon information, we could aggregate them by year and by county
+using the `gc_aggregate_by` command and our coordinates for the county and the year. 
+
+#### Performing surveillance once
+
+Our first step in the analysis is to develop a model to predict the number of cases in each county
+in each year. Let's start with a fairly simple model, where the number of cases depends on the year,
+with an offset for the log population of the county. 
+
+```{r model-1}
+mod <- glm(count ~ year,
+           family = poisson(link = "log"),
+           offset = log(population),
+           data = NM_popcas)
+```
+
+Then, to generate predictions of the number of cases, we can use the `extract_yhat` function from
+`statsurv`. Most of the functions in `statsurv` follow the same order of arguments: space_coord, 
+time_coord, object, and data. 
+
+```{r extract-yhat}
+expected_cases <- extract_yhat(nm_county_fips_2010, year_coord, mod, NM_popcas)
+plot(factor(expected_cases$county), expected_cases$yhat)
+```
+
+If we want to explore correlations in the model, we can use the `sample_yhat` function instead of
+`extract_yhat`.
+
+```{r}
+expected_case_samples <- sample_yhat(nm_county_fips_2010, year_coord, mod, NM_popcas, 
+                                     n_samples = 20)
+head(as_tibble(expected_case_samples))
+```
+
+With a baseline prediction out of the way, we're ready to apply an alarm function to compare
+how our expected and actual number of cases compare. 
+
+To use the alarm functions, we need to do a little work to get our baseline and case data in the
+format that the alarms expect. The counts and baseline data need to be formatted as matrices, with
+one column for each spatial location and one row for each time point. And we need to aggregate 
+our spatial locations together into overlapping zones, if we want to use a scan-type alarm function.
+
+```{r scan-eb-pois}
+wide_cases <- pivot_for_scan(NM_popcas, "count", nm_county_fips_2010, year_coord)
+wide_baseline <- pivot_for_scan(expected_cases, "yhat", nm_county_fips_2010, year_coord)
+zones <- space_coord_to_zones(nm_county_fips_2010, max_k = 10)
+
+scan_res <- scan_eb_poisson(wide_cases, zones, baselines = wide_baseline, n_mcsim = 100)
+print(scan_res)
+
+extract_clusters(scan_res, zones, "score", allow_overlap = FALSE, max_allowed = 5)
+```
+
+#### Performing surveillance repeatedly 
+
+So far, the `statsurv` package has been a minor player in what we're doing. The main power of the 
+package comes when we don't want to run this analysis once, we want to run it multiple times. In 
+this example, that means checking every year to see if the number of observed cases matches what 
+we would expect from our model. 
+
+For the 3 main steps in surveillance - fitting a model, calculating baseline predictions, and 
+applying an alarm function - `statsurv` provides a function to perform this analysis repeatedly. 
+The three functions are `loop_model`, `loop_extract_yhat`, and `loop_alarm_function`. There's also
+the general-purpose function `loop_over`, if none of the specialized functions are able to 
+perform the analysis that's required. 
+
+Our first step is to repeatedly fit a model to the data. We'll start by using the same model we
+used before, except that because we want to fit it repeatedly, we have to wrap it inside a function.
+This function has to follow 2 rules:
+
+1. The first three arguments to the model_function must be: `space_coord`, `time_coord`, and
+`data_for_model`.
+
+1. The model_function must return a list, where the first element is the model fit object and is
+named "fit", and the second element is the data.frame used by the fitting function and is named
+"data".
+
+So, here is the same model we used before, but wrapped inside a function
+
+```{r glm-func}
+glm_func <- function(space_coord, time_coord, data_for_model) {
+  mod <- glm(count ~ year,
+             family = poisson(link = "log"),
+             offset = log(population),
+             data = data_for_model)
+  to_return <- list(fit = mod,
+                    data = data_for_model)
+  return(to_return)
+}
+```
+
+Then we can use this function inside of loop_model:
+
+```{r loop-model, message=TRUE}
+fits_and_data <- loop_model(space_coord = nm_county_fips_2010, 
+                            time_coord = year_coord, 
+                            data_for_model = NM_popcas, 
+                            outcome_col = "count", 
+                            path_to_model = glm_func, 
+                            use_cache = FALSE, 
+                            min_train = 7)
+all_fits <- fits_and_data[[1]]
+all_data <- fits_and_data[[2]]
+```
+
+`loop_model` has an unfortunately large number of arguments, but only the first 5 are required. The
+first two are the space and time coordinates, and the third argument is the data to be used in
+fitting the model. The fourth argument, `outcome_col`, is the name of the column in `data_for_model`
+containing the outcome variable. The fifth argument should either be a function that performs the
+model fit, or the name of an .R file containing the function you want to run.
+
+The primary task that `loop_model` performs is running the model fit function on different subsets 
+of the data. Each subset will include a number of data points to use to fit the model (specified by
+`min_train` and `max_train`) and a number of data points to generate predictions for (specified by
+`n_predict`). In our example, `min_train` is 7, so at least 7 years of data will be used whenever the 
+model is fit. Our data starts in 1973, so the first year we can generate predictions for is 1980. 
+`n_predict` is set to 1 by default, meaning we only predict one years worth of outcomes at a time. 
+
+`loop_model` returns a list with 2 components. The first component is a list of every model fit, and
+the second is a list of every subset of the data.
+
+These can be fed directly into loop_extract_yhat to generate predictions:
+
+```{r loop-extract-yhat, message = TRUE}
+all_yhats <- loop_extract_yhat(space_coord = nm_county_fips_2010,
+                               time_coord = year_coord,
+                               list_of_model_fits = all_fits,
+                               list_of_model_data = all_data,
+                               yhat_extractor_name = "extract",
+                               use_surveillance_residuals = FALSE,
+                               use_cache = FALSE)
+```
+
+Now, instead of a single data frame containing predictions, we get a list of data frames, each
+one containing the predictions at a given time point. 
+
+Finally, we feed our predictions as well as our case counts in `loop_alarm_function`. 
+loop_alarm_function can take care of transforming our data into wide matrices, so we can just pass
+in the lists of baseline predictions and observed cases directly. 
+
+```{r loop-alarm-function, message = TRUE}
+all_alarms <- loop_alarm_function(space_coord = nm_county_fips_2010,
+                                  time_coord = year_coord,
+                                  list_of_yhats = all_yhats,
+                                  list_of_model_data = all_data,
+                                  outcome_col = "count",
+                                  alarm_function_name = "scan_eb_poisson",
+                                  max_k = 10,
+                                  n_mcsim = 25,
+                                  use_cache = FALSE)
+```
+
+And now we have our results! Although, to be fair, we're probably going to want to display the results
+somehow. And `statsurv` has a plan for that as well.
+
+
+```{r displaying-results}
+all_coeffs <- list()
+for (ind in seq_len(length(all_fits))) {
+  if (identical(all_fits[[ind]], NA)) {
+    next
+  }
+    curr_label <- names(all_fits)[[ind]]
+    curr_df <- report_model_coeff(all_fits[[ind]])
+    curr_df[["year"]] <- as.numeric(names(all_fits)[[ind]])
+    all_coeffs[[ind]] <- curr_df
+}
+tall_coeff_df <- do.call(rbind, all_coeffs)
+library("ggplot2")
+ggplot(tall_coeff_df, aes(x = year, y = estimate, color = term, group = term)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap("term", scales = "free")
+```
+
+We'll probably also want to look at where the cluster is located.  We can find the most likely zone
+by using `extract_clusters`, and from there we can extract the most likely locations:
+
+```{r extract-clsuters}
+
+mlc <- extract_clusters(all_alarms[["1989"]], zones, max_allowed = 1)
+print(mlc)
+nm_county_fips_2010[zones[[mlc$zone]], ]
+```
+
+We can also look at how the alarm statistic in the most likely zone has changed over time:
+
+### Scan statistics scores in the most likely cluster over time
+
+```{r extract-stat}
+alarm_df <- extract_alarm_statistic(nm_county_fips_2010, year_coord, all_alarms, mlc$zone)
+ggplot(alarm_df, aes(x = surveillance_date, y = action_level, color = action_level)) + 
+  geom_point() + 
+  geom_line() + 
+  geom_line(aes(y = upper_control_limit), color = "gray30", linetype = "dashed")
+
+```
+
+And we see that while this cluster isn't likely to be of concern now, it had a higher number of cases
+than your be expected by chance in 1989. 
+
+#### Changing the bits and pieces
+
+The other strength of `statsurv` is the ability to swap out bits and pieces of your analysis while
+keeping the rest intact. As a simple example, we can change what alarm function we're using, just
+by changing one argument to `loop_alarm_functions`:
+
+```{r new-alarms}
+# Use the negative binomial scan function instead of the expectation-based poisson
+all_alarms <- loop_alarm_function(space_coord = nm_county_fips_2010,
+                                  time_coord = year_coord,
+                                  list_of_yhats = all_yhats,
+                                  list_of_model_data = all_data,
+                                  outcome_col = "count",
+                                  alarm_function_name = "scan_eb_negbin_fast",
+                                  max_k = 10,
+                                  n_mcsim = 25,
+                                  use_cache = FALSE)
+
+```
+
+We can also use a CUSUM or Shewhart type alarm function, instead of a scan-type alarm function:
+```{r cusum}
+all_alarms_x150 <- loop_alarm_function(space_coord = nm_county_fips_2010,
+                                  time_coord = year_coord,
+                                  list_of_yhats = all_yhats,
+                                  list_of_model_data = all_data,
+                                  outcome_col = "count",
+                                  alarm_function_name = "parallel_cusum_poisson",
+                                  max_k = 10,
+                                  n_mcsim = 25,
+                                  use_cache = FALSE)
+all_alarms_x150[["1991"]][1:10, 1:10]
+
+all_alarms_x125 <- loop_alarm_function(space_coord = nm_county_fips_2010,
+                                  time_coord = year_coord,
+                                  list_of_yhats = all_yhats,
+                                  list_of_model_data = all_data,
+                                  outcome_col = "count",
+                                  alarm_function_name = "parallel_cusum_poisson",
+                                  max_k = 10,
+                                  n_mcsim = 25,
+                                  use_cache = FALSE,
+                                  extra_alarm_args = list(scaling = 1.25))
+plot_df1 <- as.data.frame(all_alarms_x150[["1991"]]) %>%
+  tibble::rownames_to_column(var = "year") %>%
+  tidyr::pivot_longer(cols = -year, values_to = "alarm_statistic") %>%
+  mutate(scaling = 1.5)
+
+plot_df2 <- as.data.frame(all_alarms_x125[["1991"]]) %>%
+  tibble::rownames_to_column(var = "year") %>%
+  tidyr::pivot_longer(cols = -year, values_to = "alarm_statistic") %>%
+  mutate(scaling = 1.25)
+plot_df <- rbind(plot_df1, plot_df2)
+ggplot(dplyr::filter(plot_df, name == "santafe"),
+       aes(x = as.numeric(year), y = alarm_statistic, color = factor(scaling), group = scaling)) +
+         geom_point() +
+  geom_line() +
+  ggtitle("CUSUM statistic in Santa Fe")
+```
+
+These "parallel-type" alarm functions return a matrix, where each column is a location and each
+row is time, and the entry is the value of the alarm statistic. 
+
+Some alarm functions have additional parameters to be passed to them. For example, the
+`parallel_cusum_poisson` alarm function takes the additional parameter "scaling", which describes
+the expected magnitude of an outbreak - a value of 1.5 means that a 50% increase in the number of
+cases is expected in the event of an outbreak. These can be passed through `loop_alarm_function`
+via the `extra_alarm_args` argument:
+```{r, eval = FALSE}
+extra_alarm_args = list(scaling = 1.25))
+```
+
+Finally, we can also swap out how we're performing our modeling. Currently, `lm`, `glm`, 
+`forecast::Arima`, and `INLA` models can be used with no modifications, as well as any other models 
+with a `predict` function. Other modeling systems can also be used, you may have to supply your own
+prediction function to `loop_extract_yhat`. 
+
+For example, we could add a sptially correlated component to our model using INLA
+
+```{r model-inla}
+model_inla_bym <- function(space_coord, time_coord, data_for_model) {
+  library(INLA)
+  
+  neighbors <- spdep::poly2nb(space_coord, queen = FALSE)
+  graph_file <-  tempfile()
+  spdep::nb2INLA(graph_file, neighbors)
+
+  f <- count ~ year +  
+    f(fips_id,
+      model = "bym",
+      graph = graph_file,
+      hyper = list(prec.unstruct = list(prior = "loggamma",
+                                        param = c(3.2761, 1.81)),
+                   prec.spatial = list(prior = "loggamma",
+                                       param = c(1, 1))))
+  fit_inla <- inla(formula = f,
+                        family = "poisson",
+                        data = data_for_model,
+                        control.family = list(link = "log"),
+                        control.compute = list(config = TRUE,
+                                               dic = TRUE),
+                        control.predictor = list(compute=TRUE,
+                                                 link = 1),
+                        offset = offset)
+  
+                        # control.fixed = list(mean = 0,
+                        #                      prec = 0.1)
+  return(list(fit = fit_inla,
+              data = data_for_model))
+}
+
+```
+
+With this new fitting function, we can run everything just the same as before:
+
+```{r, message = TRUE}
+NM_popcas$fips_id <- gridcoord::gc_get_match(NM_popcas, nm_county_fips_2010)
+fits_and_data <- loop_model(space_coord = nm_county_fips_2010, 
+                            time_coord = year_coord, 
+                            data_for_model = NM_popcas, 
+                            outcome_col = "count", 
+                            path_to_model = model_inla_bym, 
+                            use_cache = FALSE, 
+                            min_train = 7,
+                            n_predict = 1)
+all_fits_inla <- fits_and_data[[1]]
+all_data_inla <- fits_and_data[[2]]
+
+all_yhat_inla <- loop_extract_yhat(space_coord = nm_county_fips_2010,
+                               time_coord = year_coord,
+                               list_of_model_fits = all_fits_inla,
+                               list_of_model_data = all_data_inla,
+                               yhat_extractor_name = "extract",
+                               use_surveillance_residuals = FALSE,
+                               use_cache = FALSE)
+
+all_alarms_inla <- loop_alarm_function(space_coord = nm_county_fips_2010,
+                                       time_coord = year_coord,
+                                       list_of_yhats = all_yhat_inla,
+                                       list_of_model_data = all_data_inla,
+                                       outcome_col = "count",
+                                       alarm_function_name = "scan_eb_poisson",
+                                       max_k = 10,
+                                       n_mcsim = 25,
+                                       use_cache = FALSE)
+
+```
+
+And we can do all the same things we did before as far as generating reports:
+
+```{r displaying-results-inla}
+all_coeffs <- list()
+for (ind in seq_len(length(all_fits_inla))) {
+  if (identical(all_fits[[ind]], NA)) {
+    next
+  }
+    curr_label <- names(all_fits)[[ind]]
+    curr_df <- report_model_coeff(all_fits_inla[[ind]])
+    curr_df[["year"]] <- as.numeric(names(all_fits_inla)[[ind]])
+    all_coeffs[[ind]] <- curr_df
+}
+tall_coeff_df <- do.call(rbind, all_coeffs)
+library("ggplot2")
+ggplot(tall_coeff_df, aes(x = year, y = estimate, color = term, group = term)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap("term", scales = "free")
+```
+
+
+```{r extract-clsuters-inla}
+mlc <- extract_clusters(all_alarms_inla[["1989"]], zones, max_allowed = 1)
+print(mlc)
+nm_county_fips_2010[zones[[mlc$zone]], ]
+```
+
+
+```{r extract-stat-inla}
+alarm_df <- extract_alarm_statistic(nm_county_fips_2010, year_coord, all_alarms_inla, mlc$zone)
+ggplot(alarm_df, aes(x = surveillance_date, y = action_level, color = action_level)) + 
+  geom_point() + 
+  geom_line() + 
+  geom_line(aes(y = upper_control_limit), color = "gray30", linetype = "dashed")
+
+```
+
+With this new model, the alarm statistic never appears to get out of hand. 
+
+## Other features
+
+There are a number of other features inside the `statsurv` package that might be useful depending 
+on what you're trying to do. Here are a few of them:
+
+1. **Caching**: If you call any of the `loop_` functions with the argument `use_cache = TRUE`, then 
+the results will be stored in a file on your computer. If the function is called with the same 
+arguments, then the results will be loaded from disk, skipping the computations. If there are revisions to
+the past data (for example, if there was a delay in processing all of the lead tests last quarter), the
+system is sophisticated enough to only re-run the model that include the revised data points. 
+
+1. **Applying the same model to different spatial locations**: Some models - mostly notably the CDC's
+ARIMA model for lead - can only handle a single spatial location at a time. If you call `loop_model`
+with `model_arity = "uni"`, then `loop_model` will fit loop over both spatial regions and temporal 
+windows. THe fits and data will be returned as "gridlists", objects that act like two-dimensional 
+lists. `loop_extract_yhat` and `loop_alarm_function` can both handle these gridlists as input. 
+
+1. **Changing how spatial data is aggregated**: The case I have in mind is obtaining census 
+information for the Colorado Health Statistics Regions. Taking ACS data at the county level and
+creating averages at the HSR level is difficult, because different counties have different populations
+and should probably be weighted differently. The `gc_rebase` command from the `gridcoord` package
+is designed for these situations, and can also handle cases where the original spatial units overlap
+with multiple of the new sptial units. 
+
+

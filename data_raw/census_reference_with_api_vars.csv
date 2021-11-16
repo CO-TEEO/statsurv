@@ -1,0 +1,59 @@
+table,table_desc,aff_var,api_var,aff_desc,human_name,notes
+B01001,SEX BY AGE,HD01_VD01,B01001_001,Estimate; Total:,pop_total,
+B01001,SEX BY AGE,HD01_VD03,B01001_003,Estimate; Male: - Under 5 years,pop_male_under5,These are under 5 - I thought we were using under 6?
+B01001,SEX BY AGE,HD01_VD27,B01001_027,Estimate; Female: - Under 5 years,pop_female_under5,
+B02008,WHITE ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES,HD01_VD01,B02008_001,Estimate; Total:,pop_white,
+B02009,BLACK OR AFRICAN AMERICAN ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES,HD01_VD01,B02009_001,Estimate; Total:,pop_aa,"Yes, variable VD01 is the african american population in this table, and not the total population"
+B02010,AMERICAN INDIAN AND ALASKA NATIVE ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES,HD01_VD01,B02010_001,Estimate; Total:,pop_amerindian,
+B02011,ASIAN ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES,HD01_VD01,B02011_001,Estimate; Total:,pop_asian,
+B03002,HISPANIC OR LATINO ORIGIN BY RACE,HD01_VD03,B03002_003,Estimate; Not Hispanic or Latino: - White alone,pop_nhwhite,
+B03002,HISPANIC OR LATINO ORIGIN BY RACE,HD01_VD04,B03002_004,Estimate; Not Hispanic or Latino: - Black or African American alone,pop_nhaa,
+B03002,HISPANIC OR LATINO ORIGIN BY RACE,HD01_VD05,B03002_005,Estimate; Not Hispanic or Latino: - American Indian and Alaska Native alone,pop_nhamerindian,
+B03002,HISPANIC OR LATINO ORIGIN BY RACE,HD01_VD06,B03002_006,Estimate; Not Hispanic or Latino: - Asian alone,pop_nhasian,
+B03002,HISPANIC OR LATINO ORIGIN BY RACE,HD01_VD12,B03002_012,Estimate; Hispanic or Latino:,pop_hispanic2,
+B03003,HISPANIC OR LATINO ORIGIN,HD01_VD03,B03003_003,Estimate; Total: - Hispanic or Latino,pop_hispanic,
+B06003,PLACE OF BIRTH BY SEX IN THE UNITED STATES,HD01_VD14,B06003_013,Estimate; Total: - Foreign born:,pop_foreignborn,This B table is missing VD02 for some reason
+B07003,GEOGRAPHICAL MOBILITY IN THE PAST YEAR BY SEX FOR CURRENT RESIDENCE IN THE UNITED STATES,HD01_VD01,B07003_001,Estimate; Total:,popover1_total,Could this be a sneaky way to calculate the population < 1 ? 
+B07003,GEOGRAPHICAL MOBILITY IN THE PAST YEAR BY SEX FOR CURRENT RESIDENCE IN THE UNITED STATES,HD01_VD08,B07003_007,Estimate; Total: - Moved within same county:,popover1_movedwicounty,This is also missing VD02
+B07003,GEOGRAPHICAL MOBILITY IN THE PAST YEAR BY SEX FOR CURRENT RESIDENCE IN THE UNITED STATES,HD01_VD11,B07003_010,Estimate; Total: - Moved from different county within same state:,popover1_movedcounty,
+B07003,GEOGRAPHICAL MOBILITY IN THE PAST YEAR BY SEX FOR CURRENT RESIDENCE IN THE UNITED STATES,HD01_VD14,B07003_013,Estimate; Total: - Moved from different state:,popover1_movedstate,
+B08201,HOUSEHOLD SIZE BY VEHICLES AVAILABLE,HD01_VD03,B08201_002,Estimate; Total: - No vehicle available,households_novehicle,
+B09001,POPULATION UNDER 18 YEARS BY AGE,HD01_VD03,B09001_003,Estimate; In households: - Under 3 years,pop_under3,
+B09001,POPULATION UNDER 18 YEARS BY AGE,HD01_VD04,B09001_004,Estimate; In households: - 3 and 4 years,pop_34,
+B09001,POPULATION UNDER 18 YEARS BY AGE,HD01_VD05,B09001_005,Estimate; In households: - 5 years,pop_5,
+B11001,HOUSEHOLD TYPE (INCLUDING LIVING ALONE),HD01_VD02,B11001_002,Estimate; Family households:,households_family,
+B11001,HOUSEHOLD TYPE (INCLUDING LIVING ALONE),HD01_VD05,B11001_005,"Estimate; Family households: - Other family: - Male householder, no wife present",households_family_singlemale,
+B11001,HOUSEHOLD TYPE (INCLUDING LIVING ALONE),HD01_VD06,B11001_006,"Estimate; Family households: - Other family: - Female householder, no husband present",households_family_singlefemale,
+B17017,POVERTY STATUS IN THE PAST 12 MONTHS BY HOUSEHOLD TYPE BY AGE OF HOUSEHOLDER,HD01_VD02,B17017_002,Estimate; Income in the past 12 months below poverty level:,households_belowfpl,
+B17020,POVERTY STATUS IN THE PAST 12 MONTHS BY AGE,HD01_VD01,B17020_001,Estimate; Total:,poppov_total,popov = population for whom povery status could be determined
+B17020,POVERTY STATUS IN THE PAST 12 MONTHS BY AGE,HD01_VD02,B17020_002,Estimate; Income in the past 12 months below poverty level:,poppov_belowfpl,
+B17020,POVERTY STATUS IN THE PAST 12 MONTHS BY AGE,HD01_VD03,B17020_003,Estimate; Income in the past 12 months below poverty level: - Under 6 years,poppov_belowfpl_under6,
+B17024,AGE BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS,HD01_VD02,B17024_002,Estimate; Under 6 years:,poppov_under6,
+B17024,AGE BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS,HD01_VD03,B17024_003,Estimate; Under 6 years: - Under .50,poppov_under6_less050fpl,
+B17024,AGE BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS,HD01_VD04,B17024_004,Estimate; Under 6 years: - .50 to .74,poppov_under6_050074fpl,
+B17024,AGE BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS,HD01_VD05,B17024_005,Estimate; Under 6 years: - .75 to .99,poppov_under6_075099fpl,
+B17024,AGE BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS,HD01_VD06,B17024_006,Estimate; Under 6 years: - 1.00 to 1.24,poppov_under6_100124fpl,
+B17024,AGE BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS,HD01_VD07,B17024_007,Estimate; Under 6 years: - 1.25 to 1.49,poppov_under6_125149fpl,
+B17024,AGE BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS,HD01_VD08,B17024_008,Estimate; Under 6 years: - 1.50 to 1.74,poppov_under6_150174fpl,
+B17024,AGE BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS,HD01_VD09,B17024_009,Estimate; Under 6 years: - 1.75 to 1.84,poppov_under6_175184fpl,
+B17024,AGE BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS,HD01_VD10,B17024_010,Estimate; Under 6 years: - 1.85 to 1.99,poppov_under6_185199fpl,
+B19057,PUBLIC ASSISTANCE INCOME IN THE PAST 12 MONTHS FOR HOUSEHOLDS,HD01_VD02,B19057_002,Estimate; Total: - With public assistance income,households_publicassistance,
+B19058,PUBLIC ASSISTANCE INCOME OR FOOD STAMPS/SNAP IN THE PAST 12 MONTHS FOR HOUSEHOLDS,HD01_VD02,B19058_002,Estimate; Total: - With cash public assistance or Food Stamps/SNAP,households_cashsnap,
+B25002,PUBLIC ASSISTANCE INCOME OR FOOD STAMPS/SNAP IN THE PAST 12 MONTHS FOR HOUSEHOLDS,HD01_VD03,B25002_003,Estimate; Total: - Vacant,hu_vacant,
+B25003,TENURE,HD01_VD01,B25003_001,Estimate; Total:,huocc_total,huocc = occupied housing units
+B25003,TENURE,HD01_VD02,B25003_002,Estimate; Total: - Owner occupied,huocc_owner,
+B25003,TENURE,HD01_VD03,B25003_003,Estimate; Total: - Renter occupied,huocc_renter,
+B25034,YEAR STRUCTURE BUILT,HD01_VD01,B25034_001,Estimate; Total:,hu_total,hu = housing units
+B25034,YEAR STRUCTURE BUILT,HD01_VD07,B25034_007,Estimate; Total: - Built 1970 to 1979,hu_7079,
+B25034,YEAR STRUCTURE BUILT,HD01_VD08,B25034_008,Estimate; Total: - Built 1960 to 1969,hu_6069,
+B25034,YEAR STRUCTURE BUILT,HD01_VD09,B25034_009,Estimate; Total: - Built 1950 to 1959,hu_5059,
+B25034,YEAR STRUCTURE BUILT,HD01_VD10,B25034_010,Estimate; Total: - Built 1940 to 1949,hu_4049,
+B25034,YEAR STRUCTURE BUILT,HD01_VD11,B25034_011,Estimate; Total: - Built 1939 or earlier,hu_39rlier,
+S1101,HOUSEHOLDS AND FAMILIES ,HC01_EST_VC02,S1101_C01_001,Total; Estimate; Total households,households_total,
+S1501,EDUCATIONAL ATTAINMENT ,HC01_EST_VC02,S1501_C01_001,Total; Estimate; Population 18 to 24 years,pop1824_total,pop1824 = population between 18 and 24
+S1501,EDUCATIONAL ATTAINMENT ,HC01_EST_VC03,S1501_C01_002,Total; Estimate; Population 18 to 24 years - Less than high school graduate,pop1824_less12grade,
+S1501,EDUCATIONAL ATTAINMENT ,HC01_EST_VC08,S1501_C01_006,Total; Estimate; Population 25 years and over,popover25_total,popover25 = population over the age of 25
+S1501,EDUCATIONAL ATTAINMENT ,HC01_EST_VC09,S1501_C01_007,Total; Estimate; Population 25 years and over - Less than 9th grade,popover25_less9grade,
+S1501,EDUCATIONAL ATTAINMENT ,HC01_EST_VC10,S1501_C01_008,"Total; Estimate; Population 25 years and over - 9th to 12th grade, no diploma",popover25_912grade,
+S1901,INCOME IN THE PAST 12 MONTHS (IN 2017 INFLATION-ADJUSTED DOLLARS),HC01_EST_VC13,S1901_C01_012,Households; Estimate; Median income (dollars),households_medianincome,
+S2301,EMPLOYMENT STATUS,HC04_EST_VC01,S2301_C04_001,Unemployment rate; Estimate; Population 16 years and over,popover16_pcntunemployed,

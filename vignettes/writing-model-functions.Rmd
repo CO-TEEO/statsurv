@@ -1,0 +1,369 @@
+---
+title: "Writing Model Functions to be used with statsurv  "
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{writing-model-functions}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup, include = FALSE}
+library(statsurv)
+```
+
+One of the trickiest parts of using the `statsurv` package is the need to specify your the model
+you want to include as a function. There's a good reason (well, at least *a* reason) for this - it
+was the only way I could come up with to make the system as flexible as I wanted. Maybe in a couple
+years the tidymodels ecosystem will have solved this problem, but for now, this slightly clunky way
+is the best that I've got. But it comes with some significant downsides in terms of
+user-friendliness.
+
+When you are writing your own model functions, remember the following key rules:
+
+1. The first three arguments to the model_function must be: `space_coord`, `time_coord`, and
+`data_for_model`.
+
+1. The model_function must return a list, where the first element is the model fit object and is
+named "fit", and the second element is the data.frame used by the fitting function and is named
+"data".
+
+1. The model function can include any additional parameters you wish, as long as their names do not
+conflict with any of the parameters to `loop_model`
+
+1. Make sure that *all* the data required by the model fit is included in the `data` parameter when
+you calculate a fit. This includes dependent variables, offets, and exposures.
+
+1. If you calculate covariates or otherwise manipulate data_for_model inside your model function,
+make sure that the "data" object in your return value includes these derived or manipulated columns.
+
+
+## Why make the model be in a function? 
+
+In short, this was the only way we could comodel specification is where the general practices of
+statistical surveillance collide with incredibly specific domain knowledge that's important for
+modeling. In other words, my approach to modeling the number of elevated blood lead tests in
+Colorado is going to be completely different than your approach for predicting the number of cruise
+ship passengers departing Alaska. Rather than try to account for every possibility in the
+`loop_model` function, you can pass in any function that you want. This will almost certainly have
+to be a function you write, but it doesnme up with to ensure that the `statsurv` package is as
+flexible and as powerful as possible. The 't necessarily have to be a complicated one.
+
+## The required format for model functions
+
+The basic requirements for any model_function are pretty minimal:
+
+1. The first three arguments to the model_function must be: `space_coord`, `time_coord`, and
+`data_for_model`.
+
+1. The model_function must return a list, where the first element is the model fit object and is
+named "fit", and the second element is the data.frame used by the fitting function and is named
+"data".
+
+So here's a simplest example for what your model function could look like:
+
+```{r eval = FALSE}
+model_lm <- function(space_coord, time_coord, data_for_model) {
+  formula <- y ~ x
+  fit_obj < - lm(formula,
+                 data = data_for_model)
+  return(list(fit = fit_obj,
+              data = data_for_model))
+}
+```
+
+## The role of `loop_model`
+
+So, what's the advantage of writing a separate function that just performas the model fit? Why go to
+all the bother of writing a function to just perform the model fit when you could write a script 
+that takes of that without all the bother of variables and arguments and fighting with environments 
+when R decides to do something weird? 
+
+The simple answer is the same as why we would ever write functions in R: by dividing our work into
+simple sub-components, with a well-defined interface, it makes it possible to reuse parts of our
+work, swapping out the parts that need to change while keeping the parts that can stay the same. 
+Specifically for `statsurv`, the goal (not yet 100% realized), is 
+to separate **modelling** and **surveillance**. So, for example, you should be able to change from
+using a `glm` model to using an `inla` model without changing anything outside of your model 
+function. Conversely, you should be able to switch from running surveillance every month on 500 
+census tracts to performing surveillance every week on 200 census tracts, without making any 
+adjustments to your model function. 
+
+Now, this isn't fully realistic, not the least because some models only make sense at certain time 
+scales (yes, that seasonal cycle in your model of yearly cases makes a lot of sense). 
+
+So, how does this play in with the `loop_model` function? In short, `loop_model` handles the 
+surveillance part of the problem, while the model function you write handles the modeling part. 
+That's the high-level overview; what does that mean specifically? `loop_model` takes care of the 
+following things: 
+
+* Running your model at multiple time points. 
+
+* If required, running your model over multiple spatial regions. 
+
+* Determining what data points should be included in each model fit. 
+
+* Saving your model results, so re-running the model can be extremely quick. 
+
+The goal is that you can figure out how to run your model -- once. Then `loop_model` can take of the
+boiler-plate work of running your model over every health statistics region in Colorado once a
+month. None of this is magic (R is good, but not *that* good), so you do have to tell `loop_model` 
+exactly how you want all of this to happen.
+
+## Passing additional parameters into your model function
+
+The downside of wrapping your model fit inside a function is that passing parameters to your model
+function gets a little more complicated. Just to make things more complicated, there are three
+distinct ways to pass additional information into your model functions:
+
+1. Calculated inside your model function 
+
+1. Passed as part of the the `extra_model_args` argument
+
+1. As a column in the `data_for_model` parameter
+
+So, how do you decide which of these options to use? Below are some examples of times when you would 
+need to pass additional information into your model. 
+
+#### Parameters that change depending on the data
+
+Our first key rule is: **If a parameter changes depending on the data, it should be calculated
+inside your model function **.
+
+Consider the function `glm.nb` from the `MASS` package, which calculates fits the data using a
+negative binomial distribution. One important parameter for this distribution is dispersion
+parameter `theta`, which controls the standard deviation of the data. In addition to the normal
+arguments for a `glm` fit, the `glm.nb` function allows the user to specify an initial value of
+`theta` when calculating the fit.
+
+So you might want to specifc a different value of `init.theta` depending on what your data looks
+like. Your script to calculate the fits might look like this:
+
+```{r, eval = FALSE}
+library("MASS")
+mu_est <- mean(data_for_model$y, na.rm = TRUE)
+var_est <- sd(data_for_model$y, na.rm = TRUE) ^ 2
+# For a n-binom model, variance = mu + (mu ^ 2) / theta
+theta_est <- mu_est ^ 2 / (var_est - mu_est) 
+fit <- glm.nb(y ~ 1, 
+              data = data_for_model,
+              init.theta = theta_est)
+```
+
+In this case, we need to know exactly what data is being used in the fit in order to calculate a
+good estimate of `init.theta`. This means that when we change how we do the surveillance --- maybe
+we include more time points in each model fit, or we divide the data into smaller aggregation units
+--- the value of this parameter is likely to change. According to our first key rule, we should
+calculate this value inside your model fit function, which might end up looking like this:
+
+```{r, eval = FALSE}
+model_glm_nb <- function(time_coord, space_coord, data_for_model) {
+  library("MASS")
+  mu_est <- mean(data_for_model$y, na.rm = TRUE)
+  var_est <- sd(data_for_model$y, na.rm = TRUE) ^ 2
+  theta_est <- mu_est ^ 2 / (var_est - mu_est) 
+  fit <- glm.nb(y ~ 1, 
+                data = data_for_model,
+                init.theta = theta_est)
+  return(list(fit = fit, data = data_for_model))
+}
+```
+
+
+#### Parameters that vary depending on how you are doing surveillance
+
+Our second key rule is **If you can calculate a parameter ahead of time, include it as an entry in 
+the `extra_model_args` parameter of `loop_model`**
+
+A good example of this is the `Arima` function from the `forecast` package. For annoying technical
+reasons, the `Arima` function needs to know how many data points it needs to be predicting. We can
+control this by using the `n_predict` argument to `loop_model`, but our model function doesn't know
+about it. Since we know this value ahead of time, we should include it as an additional parameter to
+our model function:
+
+```{r, eval = FALSE}
+model_arima <- function(time_coord, space_coord, data_for_model, n_ahead) {
+  #...
+}
+```
+
+We then also have to include this as part of the `extra_model_args` parameter in our call to 
+`loop_model`:
+
+```{r, eval = FALSE}
+loop_model(space_coord, time_coord, data_for_model, outcome_col = "y", 
+           path_to_model = model_arima, n_predict = 3,
+           extra_model_args = list(n_ahead = 3))
+```
+
+#### Parameters that you want to be able to quickly change and compare
+
+A third situation where passing additional parameters to your model function might be appropriate is
+when you want to be able to quickly compare how your surveillance results change based on a
+model-fitting parameter. One example of this would be the number of trees in a random forest model,
+or other hyper-parameters for machine learning models. The `statsurv` package isn't designed for
+tuning hyper-parameters, but it still might to spot-check a couple different values of one or two
+hyper-parameters.
+
+In this case, since we can calculate our values ahead of time, we should follow our second key rule
+and supply this parameter as an extra argument to our model function:
+
+```{r, eval = FALSE}
+model_ranger <- function(time_coord, space_coord, data_for_model, n_trees) {
+  library("ranger")
+  fit <- ranger(y ~ .,
+                data = data_for_model,
+                num.trees = n_trees)
+  return(list(fit = fit, data = data_for_model))
+}
+
+loop_model(space_coord, time_coord, data_for_model, outcome_col = "y", 
+           path_to_model = model_arima, n_predict = 3,
+           extra_model_args = list(n_trees = 300))
+```
+
+
+#### A third option: Extra columns in data_for_model
+
+A final option for passing arguments into your model function is to specify them as extra columns in
+`data_for_model`. In my head, this is only occasionally going to be useful - it's not as transparent
+as including it in `extra_model_args`, and it's not as flexible as calculating it
+inside your model function. But it is an option, so we could re-write our ranger model above to
+instead be:
+
+```{r, eval = FALSE}
+model_ranger2 <- function(time_coord, space_coord, data_for_model) {
+  n_trees <- data_for_model$n_trees[[1]]
+  fit <- ranger(y ~ .,
+                data = data_for_model,
+                num.trees = n_trees)
+  return(list(fit = fit, data = data_for_model))
+}
+
+data_for_model$n_trees <- 302
+loop_model(space_coord, time_coord, data_for_model, outcome_col = "y", 
+           path_to_model = model_arima, n_predict = 3)
+```
+
+
+## When should covariates be calculated inside the model_function, and when should they be calculated in advance?
+
+Both of these options work, so this is at heart a matter of personal preference. My advice is
+**everything that can be calculated in advance should be calculated in advance**. That means that
+few or none of the covariates should be calculated inside your model function, and almost all of
+them should be calculated in your top-level script.
+
+The largest downside of this approach is that it splits your model into two parts - the part that
+calculates the covariates, and the part that actually fits the model. This means that in order to
+change some things, you'll have to change them in two different places. That increases the chance of
+bugs and makes it harder to plug and play a model into different surveillance areas.
+
+However, I think that this cost is worth it. First, since the model function is called multiple
+times, there can be a signficant performance penalty to calculating the covariates inside the model
+function. Second, calculating the covariates can often involve a number of quite complicated steps
+that are simpler to understand if they are encapsulated in their own function or script.
+
+That being said, there are some covariates that cannot be calculated ahead of time. For example, the
+function used in the CDC's enhanced surveillance tool includes a slope with time that can change
+after 36 months from the start of the fitting window. We can include this as a coviarate via
+`data_for_model$t_36 <- pmax((1:nrow(data_for_model)) - 36, 0)`, but since the fitting window
+changes for every model fit, we cannot calculat ethe value of `t_36` in advance.
+
+Finally, it's important that the value of `data` returned by your model function include any
+covariates that are manipulated or derived inside of your model function.
+
+
+## Common pitfalls
+
+We're almost done, I promise. Everything below this are a few specific edge cases and common
+pitfalls.
+
+#### ARIMA models and removing data
+
+Because ARIMA models are ordered, they behave differently than most other models when making
+predictions. Most models, including `lm`, `glm`, and `INLA` models, make the same predictions
+whether rows with NA values are included or not. However, ARIMA models do not behave this way ---
+since the output for each time point depends on the previous values, rows with `NA` in them affect
+the predictions. Unforunately, this is something that you the user will have to deal with - there's
+no way for the `loop_model` program to remove the values for you.
+
+One simple way to do this would be as followed (modified from the CDC's enhanced surveillance tool): 
+```{r, eval = FALSE}
+model_arima <- function(time_coord, space_coord, data_for_model, .n_ahead) {
+  library("forecast")
+  df <- data_for_model
+  df$index <- 1:nrow(df)
+  df$t_36 <- pmax(df$index - 36, 0)
+  
+  xreg <- as.matrix(df[, c("covar1", "t_36")])
+  n <- nrow(df)
+  ycol <- df$percent_elevated
+  ###>>> Key part for removing values
+  rows_for_predicting <- seq(n - .nahead + 1, n)
+  xreg_for_fitting <- xreg[-rows_for_predicting, ]
+  ycol_for_fitting <- ycol[-rows_for_predicting]
+  ###<<<
+  
+  fit_arima <- forecast::Arima(ycol_for_fitting
+                       order = c(1,0,0),
+                       method = "ML",
+                       include.mean = TRUE, # include intercept
+                       transform.pars = FALSE,
+                       xreg = xreg_for_fitting
+    )
+  return(list(fit = fit_arima,
+              data = df,
+              xreg = xreg))
+}
+
+```
+
+####  Offsets not being stored in the data
+
+The following code does not work:
+```{r, eval = FALSE, background = "red"}
+model_glm <- function(time_coord, space_coord, data_for_model) {
+  offset_data <- log(data_for_model$total_population) 
+  fit_glm <- glm(total_elevated ~ 1 + years_since_2006,
+                 data = data_for_model,
+                 family = poisson(link = "log"),
+                 offset = offset_data)
+  return(list(fit = fit_glm,
+              data = data_for_model))
+}
+
+```
+
+The problem is that the information that `glm` is using to calculate the offset isn't stored inside
+the fit object. Instead, the fit object just remembers that it needs to look for a variable called
+`offset_data` in order to calculate the offset. But after we've passed the fit object around a
+couple times (especially if we save it to disk and later reload it), the fit object no longer
+remebers what `offset_data` is or where to find it.
+
+A better option is to make sure that all the data that `glm` needs is included in the
+`data_for_model` data.frame:
+
+```{r, eval = FALSE, background = "green"}
+model_glm <- function(time_coord, space_coord, data_for_model) {
+  fit_glm <- glm(total_elevated ~ 1 + years_since_2006,
+                 data = data_for_model,
+                 family = poisson(link = "log"),
+                 offset = log(total_population) )
+  return(list(fit = fit_glm,
+              data = data_for_model))
+}
+
+```
+
+Now when our fit object tries to calculate the offset, it remembers that it needs to look up the
+variable `total_population`. The first place that it will look is inside our dataframe, where it
+will sucessfully find a column called `total_population`.
+
+
+

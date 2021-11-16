@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Writing Model Functions to be used with statsurv</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+<script>// Hide empty <a> tag within highlighted CodeBlock for screen reader accessibility (see https://github.com/jgm/pandoc/issues/6352#issuecomment-626106786) -->
+// v0.0.1
+// Written by JooYoung Seo (jooyoung@psu.edu) and Atsushi Yasumoto on June 1st, 2020.
+
+document.addEventListener('DOMContentLoaded', function() {
+  const codeList = document.getElementsByClassName("sourceCode");
+  for (var i = 0; i < codeList.length; i++) {
+    var linkList = codeList[i].getElementsByTagName('a');
+    for (var j = 0; j < linkList.length; j++) {
+      if (linkList[j].innerHTML === "") {
+        linkList[j].setAttribute('aria-hidden', 'true');
+      }
+    }
+  }
+});
+</script>
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Writing Model Functions to be used with statsurv</h1>
+
+
+
+<p>One of the trickiest parts of using the <code>statsurv</code> package is the need to specify your the model you want to include as a function. There’s a good reason (well, at least <em>a</em> reason) for this - it was the only way I could come up with to make the system as flexible as I wanted. Maybe in a couple years the tidymodels ecosystem will have solved this problem, but for now, this slightly clunky way is the best that I’ve got. But it comes with some significant downsides in terms of user-friendliness.</p>
+<p>When you are writing your own model functions, remember the following key rules:</p>
+<ol style="list-style-type: decimal">
+<li><p>The first three arguments to the model_function must be: <code>space_coord</code>, <code>time_coord</code>, and <code>data_for_model</code>.</p></li>
+<li><p>The model_function must return a list, where the first element is the model fit object and is named “fit”, and the second element is the data.frame used by the fitting function and is named “data”.</p></li>
+<li><p>The model function can include any additional parameters you wish, as long as their names do not conflict with any of the parameters to <code>loop_model</code></p></li>
+<li><p>Make sure that <em>all</em> the data required by the model fit is included in the <code>data</code> parameter when you calculate a fit. This includes dependent variables, offets, and exposures.</p></li>
+<li><p>If you calculate covariates or otherwise manipulate data_for_model inside your model function, make sure that the “data” object in your return value includes these derived or manipulated columns.</p></li>
+</ol>
+<div id="why-make-the-model-be-in-a-function" class="section level2">
+<h2>Why make the model be in a function?</h2>
+<p>In short, this was the only way we could comodel specification is where the general practices of statistical surveillance collide with incredibly specific domain knowledge that’s important for modeling. In other words, my approach to modeling the number of elevated blood lead tests in Colorado is going to be completely different than your approach for predicting the number of cruise ship passengers departing Alaska. Rather than try to account for every possibility in the <code>loop_model</code> function, you can pass in any function that you want. This will almost certainly have to be a function you write, but it doesnme up with to ensure that the <code>statsurv</code> package is as flexible and as powerful as possible. The ’t necessarily have to be a complicated one.</p>
+</div>
+<div id="the-required-format-for-model-functions" class="section level2">
+<h2>The required format for model functions</h2>
+<p>The basic requirements for any model_function are pretty minimal:</p>
+<ol style="list-style-type: decimal">
+<li><p>The first three arguments to the model_function must be: <code>space_coord</code>, <code>time_coord</code>, and <code>data_for_model</code>.</p></li>
+<li><p>The model_function must return a list, where the first element is the model fit object and is named “fit”, and the second element is the data.frame used by the fitting function and is named “data”.</p></li>
+</ol>
+<p>So here’s a simplest example for what your model function could look like:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a>model_lm &lt;-<span class="st"> </span><span class="cf">function</span>(space_coord, time_coord, data_for_model) {</span>
+<span id="cb1-2"><a href="#cb1-2"></a>  formula &lt;-<span class="st"> </span>y <span class="op">~</span><span class="st"> </span>x</span>
+<span id="cb1-3"><a href="#cb1-3"></a>  fit_obj <span class="op">&lt;</span><span class="st"> </span><span class="op">-</span><span class="st"> </span><span class="kw">lm</span>(formula,</span>
+<span id="cb1-4"><a href="#cb1-4"></a>                 <span class="dt">data =</span> data_for_model)</span>
+<span id="cb1-5"><a href="#cb1-5"></a>  <span class="kw">return</span>(<span class="kw">list</span>(<span class="dt">fit =</span> fit_obj,</span>
+<span id="cb1-6"><a href="#cb1-6"></a>              <span class="dt">data =</span> data_for_model))</span>
+<span id="cb1-7"><a href="#cb1-7"></a>}</span></code></pre></div>
+</div>
+<div id="the-role-of-loop_model" class="section level2">
+<h2>The role of <code>loop_model</code></h2>
+<p>So, what’s the advantage of writing a separate function that just performas the model fit? Why go to all the bother of writing a function to just perform the model fit when you could write a script that takes of that without all the bother of variables and arguments and fighting with environments when R decides to do something weird?</p>
+<p>The simple answer is the same as why we would ever write functions in R: by dividing our work into simple sub-components, with a well-defined interface, it makes it possible to reuse parts of our work, swapping out the parts that need to change while keeping the parts that can stay the same. Specifically for <code>statsurv</code>, the goal (not yet 100% realized), is to separate <strong>modelling</strong> and <strong>surveillance</strong>. So, for example, you should be able to change from using a <code>glm</code> model to using an <code>inla</code> model without changing anything outside of your model function. Conversely, you should be able to switch from running surveillance every month on 500 census tracts to performing surveillance every week on 200 census tracts, without making any adjustments to your model function.</p>
+<p>Now, this isn’t fully realistic, not the least because some models only make sense at certain time scales (yes, that seasonal cycle in your model of yearly cases makes a lot of sense).</p>
+<p>So, how does this play in with the <code>loop_model</code> function? In short, <code>loop_model</code> handles the surveillance part of the problem, while the model function you write handles the modeling part. That’s the high-level overview; what does that mean specifically? <code>loop_model</code> takes care of the following things:</p>
+<ul>
+<li><p>Running your model at multiple time points.</p></li>
+<li><p>If required, running your model over multiple spatial regions.</p></li>
+<li><p>Determining what data points should be included in each model fit.</p></li>
+<li><p>Saving your model results, so re-running the model can be extremely quick.</p></li>
+</ul>
+<p>The goal is that you can figure out how to run your model – once. Then <code>loop_model</code> can take of the boiler-plate work of running your model over every health statistics region in Colorado once a month. None of this is magic (R is good, but not <em>that</em> good), so you do have to tell <code>loop_model</code> exactly how you want all of this to happen.</p>
+</div>
+<div id="passing-additional-parameters-into-your-model-function" class="section level2">
+<h2>Passing additional parameters into your model function</h2>
+<p>The downside of wrapping your model fit inside a function is that passing parameters to your model function gets a little more complicated. Just to make things more complicated, there are three distinct ways to pass additional information into your model functions:</p>
+<ol style="list-style-type: decimal">
+<li><p>Calculated inside your model function</p></li>
+<li><p>Passed as part of the the <code>extra_model_args</code> argument</p></li>
+<li><p>As a column in the <code>data_for_model</code> parameter</p></li>
+</ol>
+<p>So, how do you decide which of these options to use? Below are some examples of times when you would need to pass additional information into your model.</p>
+<div id="parameters-that-change-depending-on-the-data" class="section level4">
+<h4>Parameters that change depending on the data</h4>
+<p>Our first key rule is: <strong>If a parameter changes depending on the data, it should be calculated inside your model function </strong>.</p>
+<p>Consider the function <code>glm.nb</code> from the <code>MASS</code> package, which calculates fits the data using a negative binomial distribution. One important parameter for this distribution is dispersion parameter <code>theta</code>, which controls the standard deviation of the data. In addition to the normal arguments for a <code>glm</code> fit, the <code>glm.nb</code> function allows the user to specify an initial value of <code>theta</code> when calculating the fit.</p>
+<p>So you might want to specifc a different value of <code>init.theta</code> depending on what your data looks like. Your script to calculate the fits might look like this:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">library</span>(<span class="st">&quot;MASS&quot;</span>)</span>
+<span id="cb2-2"><a href="#cb2-2"></a>mu_est &lt;-<span class="st"> </span><span class="kw">mean</span>(data_for_model<span class="op">$</span>y, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>)</span>
+<span id="cb2-3"><a href="#cb2-3"></a>var_est &lt;-<span class="st"> </span><span class="kw">sd</span>(data_for_model<span class="op">$</span>y, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>) <span class="op">^</span><span class="st"> </span><span class="dv">2</span></span>
+<span id="cb2-4"><a href="#cb2-4"></a><span class="co"># For a n-binom model, variance = mu + (mu ^ 2) / theta</span></span>
+<span id="cb2-5"><a href="#cb2-5"></a>theta_est &lt;-<span class="st"> </span>mu_est <span class="op">^</span><span class="st"> </span><span class="dv">2</span> <span class="op">/</span><span class="st"> </span>(var_est <span class="op">-</span><span class="st"> </span>mu_est) </span>
+<span id="cb2-6"><a href="#cb2-6"></a>fit &lt;-<span class="st"> </span><span class="kw">glm.nb</span>(y <span class="op">~</span><span class="st"> </span><span class="dv">1</span>, </span>
+<span id="cb2-7"><a href="#cb2-7"></a>              <span class="dt">data =</span> data_for_model,</span>
+<span id="cb2-8"><a href="#cb2-8"></a>              <span class="dt">init.theta =</span> theta_est)</span></code></pre></div>
+<p>In this case, we need to know exactly what data is being used in the fit in order to calculate a good estimate of <code>init.theta</code>. This means that when we change how we do the surveillance — maybe we include more time points in each model fit, or we divide the data into smaller aggregation units — the value of this parameter is likely to change. According to our first key rule, we should calculate this value inside your model fit function, which might end up looking like this:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a>model_glm_nb &lt;-<span class="st"> </span><span class="cf">function</span>(time_coord, space_coord, data_for_model) {</span>
+<span id="cb3-2"><a href="#cb3-2"></a>  <span class="kw">library</span>(<span class="st">&quot;MASS&quot;</span>)</span>
+<span id="cb3-3"><a href="#cb3-3"></a>  mu_est &lt;-<span class="st"> </span><span class="kw">mean</span>(data_for_model<span class="op">$</span>y, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>)</span>
+<span id="cb3-4"><a href="#cb3-4"></a>  var_est &lt;-<span class="st"> </span><span class="kw">sd</span>(data_for_model<span class="op">$</span>y, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>) <span class="op">^</span><span class="st"> </span><span class="dv">2</span></span>
+<span id="cb3-5"><a href="#cb3-5"></a>  theta_est &lt;-<span class="st"> </span>mu_est <span class="op">^</span><span class="st"> </span><span class="dv">2</span> <span class="op">/</span><span class="st"> </span>(var_est <span class="op">-</span><span class="st"> </span>mu_est) </span>
+<span id="cb3-6"><a href="#cb3-6"></a>  fit &lt;-<span class="st"> </span><span class="kw">glm.nb</span>(y <span class="op">~</span><span class="st"> </span><span class="dv">1</span>, </span>
+<span id="cb3-7"><a href="#cb3-7"></a>                <span class="dt">data =</span> data_for_model,</span>
+<span id="cb3-8"><a href="#cb3-8"></a>                <span class="dt">init.theta =</span> theta_est)</span>
+<span id="cb3-9"><a href="#cb3-9"></a>  <span class="kw">return</span>(<span class="kw">list</span>(<span class="dt">fit =</span> fit, <span class="dt">data =</span> data_for_model))</span>
+<span id="cb3-10"><a href="#cb3-10"></a>}</span></code></pre></div>
+</div>
+<div id="parameters-that-vary-depending-on-how-you-are-doing-surveillance" class="section level4">
+<h4>Parameters that vary depending on how you are doing surveillance</h4>
+<p>Our second key rule is <strong>If you can calculate a parameter ahead of time, include it as an entry in the <code>extra_model_args</code> parameter of <code>loop_model</code></strong></p>
+<p>A good example of this is the <code>Arima</code> function from the <code>forecast</code> package. For annoying technical reasons, the <code>Arima</code> function needs to know how many data points it needs to be predicting. We can control this by using the <code>n_predict</code> argument to <code>loop_model</code>, but our model function doesn’t know about it. Since we know this value ahead of time, we should include it as an additional parameter to our model function:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a>model_arima &lt;-<span class="st"> </span><span class="cf">function</span>(time_coord, space_coord, data_for_model, n_ahead) {</span>
+<span id="cb4-2"><a href="#cb4-2"></a>  <span class="co">#...</span></span>
+<span id="cb4-3"><a href="#cb4-3"></a>}</span></code></pre></div>
+<p>We then also have to include this as part of the <code>extra_model_args</code> parameter in our call to <code>loop_model</code>:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">loop_model</span>(space_coord, time_coord, data_for_model, <span class="dt">outcome_col =</span> <span class="st">&quot;y&quot;</span>, </span>
+<span id="cb5-2"><a href="#cb5-2"></a>           <span class="dt">path_to_model =</span> model_arima, <span class="dt">n_predict =</span> <span class="dv">3</span>,</span>
+<span id="cb5-3"><a href="#cb5-3"></a>           <span class="dt">extra_model_args =</span> <span class="kw">list</span>(<span class="dt">n_ahead =</span> <span class="dv">3</span>))</span></code></pre></div>
+</div>
+<div id="parameters-that-you-want-to-be-able-to-quickly-change-and-compare" class="section level4">
+<h4>Parameters that you want to be able to quickly change and compare</h4>
+<p>A third situation where passing additional parameters to your model function might be appropriate is when you want to be able to quickly compare how your surveillance results change based on a model-fitting parameter. One example of this would be the number of trees in a random forest model, or other hyper-parameters for machine learning models. The <code>statsurv</code> package isn’t designed for tuning hyper-parameters, but it still might to spot-check a couple different values of one or two hyper-parameters.</p>
+<p>In this case, since we can calculate our values ahead of time, we should follow our second key rule and supply this parameter as an extra argument to our model function:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a>model_ranger &lt;-<span class="st"> </span><span class="cf">function</span>(time_coord, space_coord, data_for_model, n_trees) {</span>
+<span id="cb6-2"><a href="#cb6-2"></a>  <span class="kw">library</span>(<span class="st">&quot;ranger&quot;</span>)</span>
+<span id="cb6-3"><a href="#cb6-3"></a>  fit &lt;-<span class="st"> </span><span class="kw">ranger</span>(y <span class="op">~</span><span class="st"> </span>.,</span>
+<span id="cb6-4"><a href="#cb6-4"></a>                <span class="dt">data =</span> data_for_model,</span>
+<span id="cb6-5"><a href="#cb6-5"></a>                <span class="dt">num.trees =</span> n_trees)</span>
+<span id="cb6-6"><a href="#cb6-6"></a>  <span class="kw">return</span>(<span class="kw">list</span>(<span class="dt">fit =</span> fit, <span class="dt">data =</span> data_for_model))</span>
+<span id="cb6-7"><a href="#cb6-7"></a>}</span>
+<span id="cb6-8"><a href="#cb6-8"></a></span>
+<span id="cb6-9"><a href="#cb6-9"></a><span class="kw">loop_model</span>(space_coord, time_coord, data_for_model, <span class="dt">outcome_col =</span> <span class="st">&quot;y&quot;</span>, </span>
+<span id="cb6-10"><a href="#cb6-10"></a>           <span class="dt">path_to_model =</span> model_arima, <span class="dt">n_predict =</span> <span class="dv">3</span>,</span>
+<span id="cb6-11"><a href="#cb6-11"></a>           <span class="dt">extra_model_args =</span> <span class="kw">list</span>(<span class="dt">n_trees =</span> <span class="dv">300</span>))</span></code></pre></div>
+</div>
+<div id="a-third-option-extra-columns-in-data_for_model" class="section level4">
+<h4>A third option: Extra columns in data_for_model</h4>
+<p>A final option for passing arguments into your model function is to specify them as extra columns in <code>data_for_model</code>. In my head, this is only occasionally going to be useful - it’s not as transparent as including it in <code>extra_model_args</code>, and it’s not as flexible as calculating it inside your model function. But it is an option, so we could re-write our ranger model above to instead be:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a>model_ranger2 &lt;-<span class="st"> </span><span class="cf">function</span>(time_coord, space_coord, data_for_model) {</span>
+<span id="cb7-2"><a href="#cb7-2"></a>  n_trees &lt;-<span class="st"> </span>data_for_model<span class="op">$</span>n_trees[[<span class="dv">1</span>]]</span>
+<span id="cb7-3"><a href="#cb7-3"></a>  fit &lt;-<span class="st"> </span><span class="kw">ranger</span>(y <span class="op">~</span><span class="st"> </span>.,</span>
+<span id="cb7-4"><a href="#cb7-4"></a>                <span class="dt">data =</span> data_for_model,</span>
+<span id="cb7-5"><a href="#cb7-5"></a>                <span class="dt">num.trees =</span> n_trees)</span>
+<span id="cb7-6"><a href="#cb7-6"></a>  <span class="kw">return</span>(<span class="kw">list</span>(<span class="dt">fit =</span> fit, <span class="dt">data =</span> data_for_model))</span>
+<span id="cb7-7"><a href="#cb7-7"></a>}</span>
+<span id="cb7-8"><a href="#cb7-8"></a></span>
+<span id="cb7-9"><a href="#cb7-9"></a>data_for_model<span class="op">$</span>n_trees &lt;-<span class="st"> </span><span class="dv">302</span></span>
+<span id="cb7-10"><a href="#cb7-10"></a><span class="kw">loop_model</span>(space_coord, time_coord, data_for_model, <span class="dt">outcome_col =</span> <span class="st">&quot;y&quot;</span>, </span>
+<span id="cb7-11"><a href="#cb7-11"></a>           <span class="dt">path_to_model =</span> model_arima, <span class="dt">n_predict =</span> <span class="dv">3</span>)</span></code></pre></div>
+</div>
+</div>
+<div id="when-should-covariates-be-calculated-inside-the-model_function-and-when-should-they-be-calculated-in-advance" class="section level2">
+<h2>When should covariates be calculated inside the model_function, and when should they be calculated in advance?</h2>
+<p>Both of these options work, so this is at heart a matter of personal preference. My advice is <strong>everything that can be calculated in advance should be calculated in advance</strong>. That means that few or none of the covariates should be calculated inside your model function, and almost all of them should be calculated in your top-level script.</p>
+<p>The largest downside of this approach is that it splits your model into two parts - the part that calculates the covariates, and the part that actually fits the model. This means that in order to change some things, you’ll have to change them in two different places. That increases the chance of bugs and makes it harder to plug and play a model into different surveillance areas.</p>
+<p>However, I think that this cost is worth it. First, since the model function is called multiple times, there can be a signficant performance penalty to calculating the covariates inside the model function. Second, calculating the covariates can often involve a number of quite complicated steps that are simpler to understand if they are encapsulated in their own function or script.</p>
+<p>That being said, there are some covariates that cannot be calculated ahead of time. For example, the function used in the CDC’s enhanced surveillance tool includes a slope with time that can change after 36 months from the start of the fitting window. We can include this as a coviarate via <code>data_for_model$t_36 &lt;- pmax((1:nrow(data_for_model)) - 36, 0)</code>, but since the fitting window changes for every model fit, we cannot calculat ethe value of <code>t_36</code> in advance.</p>
+<p>Finally, it’s important that the value of <code>data</code> returned by your model function include any covariates that are manipulated or derived inside of your model function.</p>
+</div>
+<div id="common-pitfalls" class="section level2">
+<h2>Common pitfalls</h2>
+<p>We’re almost done, I promise. Everything below this are a few specific edge cases and common pitfalls.</p>
+<div id="arima-models-and-removing-data" class="section level4">
+<h4>ARIMA models and removing data</h4>
+<p>Because ARIMA models are ordered, they behave differently than most other models when making predictions. Most models, including <code>lm</code>, <code>glm</code>, and <code>INLA</code> models, make the same predictions whether rows with NA values are included or not. However, ARIMA models do not behave this way — since the output for each time point depends on the previous values, rows with <code>NA</code> in them affect the predictions. Unforunately, this is something that you the user will have to deal with - there’s no way for the <code>loop_model</code> program to remove the values for you.</p>
+<p>One simple way to do this would be as followed (modified from the CDC’s enhanced surveillance tool):</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a>model_arima &lt;-<span class="st"> </span><span class="cf">function</span>(time_coord, space_coord, data_for_model, .n_ahead) {</span>
+<span id="cb8-2"><a href="#cb8-2"></a>  <span class="kw">library</span>(<span class="st">&quot;forecast&quot;</span>)</span>
+<span id="cb8-3"><a href="#cb8-3"></a>  df &lt;-<span class="st"> </span>data_for_model</span>
+<span id="cb8-4"><a href="#cb8-4"></a>  df<span class="op">$</span>index &lt;-<span class="st"> </span><span class="dv">1</span><span class="op">:</span><span class="kw">nrow</span>(df)</span>
+<span id="cb8-5"><a href="#cb8-5"></a>  df<span class="op">$</span>t_<span class="dv">36</span> &lt;-<span class="st"> </span><span class="kw">pmax</span>(df<span class="op">$</span>index <span class="op">-</span><span class="st"> </span><span class="dv">36</span>, <span class="dv">0</span>)</span>
+<span id="cb8-6"><a href="#cb8-6"></a>  </span>
+<span id="cb8-7"><a href="#cb8-7"></a>  xreg &lt;-<span class="st"> </span><span class="kw">as.matrix</span>(df[, <span class="kw">c</span>(<span class="st">&quot;covar1&quot;</span>, <span class="st">&quot;t_36&quot;</span>)])</span>
+<span id="cb8-8"><a href="#cb8-8"></a>  n &lt;-<span class="st"> </span><span class="kw">nrow</span>(df)</span>
+<span id="cb8-9"><a href="#cb8-9"></a>  ycol &lt;-<span class="st"> </span>df<span class="op">$</span>percent_elevated</span>
+<span id="cb8-10"><a href="#cb8-10"></a>  <span class="co">###&gt;&gt;&gt; Key part for removing values</span></span>
+<span id="cb8-11"><a href="#cb8-11"></a>  rows_for_predicting &lt;-<span class="st"> </span><span class="kw">seq</span>(n <span class="op">-</span><span class="st"> </span>.nahead <span class="op">+</span><span class="st"> </span><span class="dv">1</span>, n)</span>
+<span id="cb8-12"><a href="#cb8-12"></a>  xreg_for_fitting &lt;-<span class="st"> </span>xreg[<span class="op">-</span>rows_for_predicting, ]</span>
+<span id="cb8-13"><a href="#cb8-13"></a>  ycol_for_fitting &lt;-<span class="st"> </span>ycol[<span class="op">-</span>rows_for_predicting]</span>
+<span id="cb8-14"><a href="#cb8-14"></a>  <span class="co">###&lt;&lt;&lt;</span></span>
+<span id="cb8-15"><a href="#cb8-15"></a>  </span>
+<span id="cb8-16"><a href="#cb8-16"></a>  fit_arima &lt;-<span class="st"> </span>forecast<span class="op">::</span><span class="kw">Arima</span>(ycol_for_fitting</span>
+<span id="cb8-17"><a href="#cb8-17"></a>                       <span class="dt">order =</span> <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">0</span>,<span class="dv">0</span>),</span>
+<span id="cb8-18"><a href="#cb8-18"></a>                       <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>,</span>
+<span id="cb8-19"><a href="#cb8-19"></a>                       <span class="dt">include.mean =</span> <span class="ot">TRUE</span>, <span class="co"># include intercept</span></span>
+<span id="cb8-20"><a href="#cb8-20"></a>                       <span class="dt">transform.pars =</span> <span class="ot">FALSE</span>,</span>
+<span id="cb8-21"><a href="#cb8-21"></a>                       <span class="dt">xreg =</span> xreg_for_fitting</span>
+<span id="cb8-22"><a href="#cb8-22"></a>    )</span>
+<span id="cb8-23"><a href="#cb8-23"></a>  <span class="kw">return</span>(<span class="kw">list</span>(<span class="dt">fit =</span> fit_arima,</span>
+<span id="cb8-24"><a href="#cb8-24"></a>              <span class="dt">data =</span> df,</span>
+<span id="cb8-25"><a href="#cb8-25"></a>              <span class="dt">xreg =</span> xreg))</span>
+<span id="cb8-26"><a href="#cb8-26"></a>}</span></code></pre></div>
+</div>
+<div id="offsets-not-being-stored-in-the-data" class="section level4">
+<h4>Offsets not being stored in the data</h4>
+<p>The following code does not work:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a>model_glm &lt;-<span class="st"> </span><span class="cf">function</span>(time_coord, space_coord, data_for_model) {</span>
+<span id="cb9-2"><a href="#cb9-2"></a>  offset_data &lt;-<span class="st"> </span><span class="kw">log</span>(data_for_model<span class="op">$</span>total_population) </span>
+<span id="cb9-3"><a href="#cb9-3"></a>  fit_glm &lt;-<span class="st"> </span><span class="kw">glm</span>(total_elevated <span class="op">~</span><span class="st"> </span><span class="dv">1</span> <span class="op">+</span><span class="st"> </span>years_since_<span class="dv">2006</span>,</span>
+<span id="cb9-4"><a href="#cb9-4"></a>                 <span class="dt">data =</span> data_for_model,</span>
+<span id="cb9-5"><a href="#cb9-5"></a>                 <span class="dt">family =</span> <span class="kw">poisson</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>),</span>
+<span id="cb9-6"><a href="#cb9-6"></a>                 <span class="dt">offset =</span> offset_data)</span>
+<span id="cb9-7"><a href="#cb9-7"></a>  <span class="kw">return</span>(<span class="kw">list</span>(<span class="dt">fit =</span> fit_glm,</span>
+<span id="cb9-8"><a href="#cb9-8"></a>              <span class="dt">data =</span> data_for_model))</span>
+<span id="cb9-9"><a href="#cb9-9"></a>}</span></code></pre></div>
+<p>The problem is that the information that <code>glm</code> is using to calculate the offset isn’t stored inside the fit object. Instead, the fit object just remembers that it needs to look for a variable called <code>offset_data</code> in order to calculate the offset. But after we’ve passed the fit object around a couple times (especially if we save it to disk and later reload it), the fit object no longer remebers what <code>offset_data</code> is or where to find it.</p>
+<p>A better option is to make sure that all the data that <code>glm</code> needs is included in the <code>data_for_model</code> data.frame:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1"></a>model_glm &lt;-<span class="st"> </span><span class="cf">function</span>(time_coord, space_coord, data_for_model) {</span>
+<span id="cb10-2"><a href="#cb10-2"></a>  fit_glm &lt;-<span class="st"> </span><span class="kw">glm</span>(total_elevated <span class="op">~</span><span class="st"> </span><span class="dv">1</span> <span class="op">+</span><span class="st"> </span>years_since_<span class="dv">2006</span>,</span>
+<span id="cb10-3"><a href="#cb10-3"></a>                 <span class="dt">data =</span> data_for_model,</span>
+<span id="cb10-4"><a href="#cb10-4"></a>                 <span class="dt">family =</span> <span class="kw">poisson</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>),</span>
+<span id="cb10-5"><a href="#cb10-5"></a>                 <span class="dt">offset =</span> <span class="kw">log</span>(total_population) )</span>
+<span id="cb10-6"><a href="#cb10-6"></a>  <span class="kw">return</span>(<span class="kw">list</span>(<span class="dt">fit =</span> fit_glm,</span>
+<span id="cb10-7"><a href="#cb10-7"></a>              <span class="dt">data =</span> data_for_model))</span>
+<span id="cb10-8"><a href="#cb10-8"></a>}</span></code></pre></div>
+<p>Now when our fit object tries to calculate the offset, it remembers that it needs to look up the variable <code>total_population</code>. The first place that it will look is inside our dataframe, where it will sucessfully find a column called <code>total_population</code>.</p>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

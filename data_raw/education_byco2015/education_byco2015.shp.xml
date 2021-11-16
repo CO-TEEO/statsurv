@@ -1,0 +1,720 @@
+﻿<metadata>
+  <idinfo>
+    <citation>
+      <citeinfo>
+        <origin>Geography Division, Bureau of the Census, U.S. Department of Commerce</origin>
+        <pubdate>201512</pubdate>
+        <title>Select Education Data from USCB ACS 2015, by NM County</title>
+        <geoform>vector digital data</geoform>
+      </citeinfo>
+    </citation>
+    <descript>
+      <abstract>A broad and generalized selection of 2011-2015 US Census Bureau 2015 5-year American Community Survey education data estimates, obtained via Census API and joined to the appropriate geometry (in this case, New Mexico counties). The selection is not comprehensive, but allows a first-level characterization of educational attaiment by grade level and sex (for all persons 25 years and older), plus enrollment estimates at key educational levels (for the universe of all persons 3+ years old). The determination of which estimates to include was based upon level of interest and providing a manageable dataset for users. The U.S. Census Bureau's American Community Survey (ACS) is a nationwide, continuous survey designed to provide communities with reliable and timely demographic, housing, social, and economic data every year. The ACS collects long-form-type information throughout the decade rather than only once every 10 years. As in the decennial census, strict confidentiality laws protect all information that could be used to identify individuals or households.The ACS combines population or housing data from multiple years to produce reliable numbers for small counties, neighborhoods, and other local areas. To provide information for communities each year, the ACS provides 1-, 3-, and 5-year estimates. ACS 5-year estimates (multiyear estimates) are “period” estimates that represent data collected over a 60-month period of time (as opposed to “point-in-time” estimates, such as the decennial census, that approximate the characteristics of an area on a specific date). ACS data are released in the year immediately following the year in which they are collected. ACS estimates based on data collected from 2009–2014 should not be called “2009” or “2014” estimates. Multiyear estimates should be labeled to indicate clearly the full period of time. The primary advantage of using multiyear estimates is the increased statistical reliability of the data for less populated areas and small population subgroups. Data are based on a sample and are subject to sampling variability. The degree of uncertainty for an estimate arising from sampling variability is represented through the use of a margin of error. While each full Data Profile contains margin of error (MOE) information, this dataset does not. Those individuals requiring more complete data are directed to download the more detailed datasets from the ACS American FactFinder website. This dataset is organized by New Mexico county boundaries.</abstract>
+      <purpose>Provide general users with a selection of education data available from the US Census Bureau's American Community Survey (ACS) 5-year estimates from 2011-2015.</purpose>
+      <supplinf>This work was influenced by the work of Todd Bleess at the Colorado State Demography Office, especially his renaming of the source (ACS) attributes into more human-readable names.</supplinf>
+    </descript>
+    <timeperd>
+      <timeinfo>
+        <sngdate>
+          <caldate>2015</caldate>
+        </sngdate>
+      </timeinfo>
+      <current>Temporal extent is twofold: 1. the underlying data derives from the 2011-2015 ACS 5-year estimates, as well as the time period during which the county boundaries are considered still valid. 2. the dataset itself is valid as a means of comparison for similar data from other time periods (such as different 5-year ACS publications). As ACS 5-year datasets are not released until subsequent years (2013-2017 was released in December of 2018, 2014-2018 should be released in December of 2019, and so on).</current>
+    </timeperd>
+    <status>
+      <progress>Complete</progress>
+      <update>Annually</update>
+    </status>
+    <spdom>
+      <bounding>
+        <westbc>-109.050170</westbc>
+        <eastbc>-103.001960</eastbc>
+        <northbc>37.000293</northbc>
+        <southbc>31.332170</southbc>
+      </bounding>
+    </spdom>
+    <keywords>
+      <theme>
+        <themekt>ISO 19115 Topic Categories</themekt>
+        <themekey>society</themekey>
+      </theme>
+      <place>
+        <placekt>GNIS</placekt>
+        <placekey>New Mexico</placekey>
+        <placekey>United States</placekey>
+      </place>
+      <temporal>
+        <tempkt>None</tempkt>
+        <tempkey>Yearly</tempkey>
+      </temporal>
+    </keywords>
+    <accconst>None</accconst>
+    <useconst>None from RGIS. The source geometry for this dataset is a TIGER/Line shapefile. TIGER/Line Shapefile products are not copyrighted however TIGER/Line and Census TIGER are registered trademarks of the U.S. Census Bureau.The boundary information in the TIGER/Line Shapefiles are for statistical data collection and tabulation purposes only; their depiction and designation for statistical purposes does not constitute a determination of jurisdictional authority or rights of ownership or entitlement and they are not legal land descriptions.Coordinates in the TIGER/Line shapefiles have six implied decimal places, but the positional accuracy of these coordinates is not as great as the six decimal places suggest.</useconst>
+    <datacred>U.S. Census Bureau; RGIS; Todd Bleess, Colorado State Demography Office</datacred>
+    <native>Microsoft Windows 7 Version 6.1 (Build 7601) Service Pack 1; Esri ArcGIS 10.5.1.7333</native>
+  </idinfo>
+  <dataqual>
+    <logic>All 33 counties are present</logic>
+    <complete>All 33 counties are present</complete>
+    <lineage>
+      <srcinfo>
+        <srccite>
+          <citeinfo>
+            <origin>Census Bureau</origin>
+            <pubdate>201512</pubdate>
+            <title>American Community Survey</title>
+          </citeinfo>
+        </srccite>
+        <typesrc>onLine</typesrc>
+        <srctime>
+          <timeinfo>
+            <sngdate>
+              <caldate>2015</caldate>
+            </sngdate>
+          </timeinfo>
+          <srccurr>Publication date</srccurr>
+        </srctime>
+        <srccitea>Census Data</srccitea>
+        <srccontr>Derived from US  Bureau of Census API</srccontr>
+      </srcinfo>
+      <procstep>
+        <procdesc>Develop script to automate the entire process described below, from obtaining data to producing and validating metadata, for a group of datasets. The slightly more detailed steps given following this step.</procdesc>
+        <procdate>20200114</procdate>
+      </procstep>
+      <procstep>
+        <procdesc>Obtain a select group of Bureau of Census data from latest availalble ACS 5-year estimate using Census API. Census API calls are limited to 50 fields/attributes per call, and are typically run as an URL, using a browser, the curl command line too, or from within a script. The data from the Census API is serialized into a dataframe.</procdesc>
+        <procdate>20200114</procdate>
+      </procstep>
+      <procstep>
+        <procdesc>Format data as needed for usefulness and attribute label readability and deserialize for the next step.</procdesc>
+        <procdate>20200114</procdate>
+      </procstep>
+      <procstep>
+        <procdesc>Joined Census dataset to appropriate geometry (like Census TIGER/Line file for New Mexico counties), performed via scripting, based on common key field.</procdesc>
+        <procdate>20200114</procdate>
+      </procstep>
+      <procstep>
+        <procdesc>Edit metadata for completeness and for compatibility with FGDC standards for distribution via NM RGIS Clearinghouse.</procdesc>
+        <procdate>20200114</procdate>
+      </procstep>
+    </lineage>
+  </dataqual>
+<spdoinfo>
+    <indspref>New Mexico</indspref>
+    <direct>Vector</direct>
+    <ptvctinf>
+      <sdtsterm>
+        <sdtstype>GT-polygon composed of chains</sdtstype>
+        <ptvctcnt>33</ptvctcnt>
+      </sdtsterm>
+    </ptvctinf>
+  </spdoinfo>
+  <spref>
+    <horizsys>
+      <geograph>
+        <latres>8.983152841195215e-009</latres>
+        <longres>8.983152841195215e-009</longres>
+        <geogunit>Decimal degrees</geogunit>
+      </geograph>
+      <geodetic>
+        <horizdn>D WGS 1984</horizdn>
+        <ellips>WGS 1984</ellips>
+        <semiaxis>6378137.0</semiaxis>
+        <denflat>298.257223563</denflat>
+      </geodetic>
+    </horizsys>
+  </spref>
+  <eainfo>
+    <detailed>
+      <enttyp>
+        <enttypl>education_byco2015</enttypl>
+        <enttypd>TIGER counties</enttypd>
+        <enttypds>Bureau of the Census</enttypds>
+      </enttyp>
+      <attr>
+        <attrlabl>FID</attrlabl>
+        <attrdef>Internal feature number.</attrdef>
+        <attrdefs>Esri</attrdefs>
+        <attrdomv>
+          <udom>Sequential unique whole numbers that are automatically generated.</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>Shape</attrlabl>
+        <attrdef>Feature geometry.</attrdef>
+        <attrdefs>Esri</attrdefs>
+        <attrdomv>
+          <udom>Coordinates defining the features.</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>NAME10</attrlabl>
+        <attrdef>2010 Census county name</attrdef>
+        <attrdefs>U.S. Census Bureau</attrdefs>
+        <attrdomv>
+          <codesetd>
+            <codesetn>INCITS.31-200x (R2007), Codes for the Identification of the Counties and Equivalent Areas of the United States, Puerto Rico, and the InsularAreas of the United States (Formerly FIPS 6-4)</codesetn>
+            <codesets>U.S. Census Bureau</codesets>
+          </codesetd>
+        </attrdomv>
+        <attrdomv>
+          <udom>County name as per the Census Bureau</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>INTPTLAT10</attrlabl>
+        <attrdef>2010 Census latitude of the internal point</attrdef>
+        <attrdefs>U.S. Census Bureau</attrdefs>
+        <attrdomv>
+          <edom>
+            <edomv>00</edomv>
+            <edomvd>Blank</edomvd>
+            <edomvds>U.S. Census Bureau</edomvds>
+          </edom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>COUNTYFP10</attrlabl>
+        <attrdef>2010 Census county Federal Information Processing Standards (FIPS) code</attrdef>
+        <attrdefs>U.S. Census Bureau</attrdefs>
+        <attrdomv>
+          <codesetd>
+            <codesetn>INCITS.31-200x (R2007), Codes for the Identification of the Counties and Equivalent Areas of the United States, Puerto Rico, and the Insular Areas of the United States (Formerly FIPS 6-4)</codesetn>
+            <codesets>U.S. Census Bureau</codesets>
+          </codesetd>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>GEOID10</attrlabl>
+        <attrdef>County identifier; a concatenation of 2010 Census state FIPS code and county FIPS code</attrdef>
+        <attrdefs>U.S. Census Bureau</attrdefs>
+        <attrdomv>
+          <codesetd>
+            <codesetn>INCITS.38-200x (R2004), Codes for the Identification of the States, the District of Columbia, Puerto Rico, and the Insular Areas of the United States (Formerly FIPS 5-2), INCITS.31-200x (R2007), Codes for the Identification of the Counties and Equivalent Areas of the United States, Puerto Rico, and the Insular Areas of the United States (Formerly FIPS 6-4)</codesetn>
+            <codesets>U.S. Census Bureau</codesets>
+          </codesetd>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>INTPTLON10</attrlabl>
+        <attrdef>2010 Census longitude of the internal point</attrdef>
+        <attrdefs>U.S. Census Bureau</attrdefs>
+        <attrdomv>
+          <edom>
+            <edomv>00</edomv>
+            <edomvd>Blank</edomvd>
+            <edomvds>U.S. Census Bureau</edomvds>
+          </edom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>CoFIP</attrlabl>
+        <attrdef>Combination field of FIPS Code for State (New Mexico) and County, as in 35002, used for joining dataset attributes to geometry</attrdef>
+        <attrdefs>EDAC</attrdefs>
+        <attrdomv>
+          <udom>FIPS Codes used to represent states and counties within those states, in the U.S. Unique numbers.</udom>
+        </attrdomv>
+        <attrmfrq>012</attrmfrq>
+      </attr>
+      <attr>
+        <attrlabl>Shape_Leng</attrlabl>
+        <attrdef>Length of feature in internal units.</attrdef>
+        <attrdefs>Esri</attrdefs>
+        <attrdomv>
+          <udom>Positive real numbers that are automatically generated.</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>Shape_Area</attrlabl>
+        <attrdef>Area of feature in internal units squared.</attrdef>
+        <attrdefs>Esri</attrdefs>
+        <attrdomv>
+          <udom>Positive real numbers that are automatically generated.</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>POP_EST2015</attrlabl>
+        <attrdef>Population Estimate from ACS 2011-2015 for $calyear, from ACS5 attribute: B03002_001E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>POP25PLUS</attrlabl>
+        <attrdef>Estimated total population 25 years or older (universe for educational attainment), from ACS5 attribute: B15002_001E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>MALE_25PL</attrlabl>
+        <attrdef>Male, all in category 25 years or older, from ACS5 attribute: B15002_002E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>M_NOSCHOOL</attrlabl>
+        <attrdef>Male 25 or older, No schooling completed, from ACS5 attribute: B15002_003E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>M_NUR_4TH</attrlabl>
+        <attrdef>Male 25 or older, Nursery to 4th grade, from ACS5 attribute: B15002_004E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>M_5TH_6TH</attrlabl>
+        <attrdef>Male 25 or older, 5th and 6th grade, from ACS5 attribute: B15002_005E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>M_7TH_8TH</attrlabl>
+        <attrdef>Male 25 or older, 7th and 8th grade, from ACS5 attribute: B15002_006E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>M_9TH</attrlabl>
+        <attrdef>Male 25 or older, 9th grade, from ACS5 attribute: B15002_007E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>M_10TH</attrlabl>
+        <attrdef>Male 25 or older, 10th grade, from ACS5 attribute: B15002_008E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>M_11TH</attrlabl>
+        <attrdef>Male 25 or older, 11th grade, from ACS5 attribute: B15002_009E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>M_12THNODIP</attrlabl>
+        <attrdef>Male 25 or older, 12th grade no diploma, from ACS5 attribute: B15002_010E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>M_HS_GED</attrlabl>
+        <attrdef>Male 25 or older, High school graduate (includes equivalency), from ACS5 attribute: B15002_011E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>M_SOMECOLL1</attrlabl>
+        <attrdef>Male 25 or older, Some college less than 1 year, from ACS5 attribute: B15002_012E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>M_SOMECOLND</attrlabl>
+        <attrdef>Male 25 or older, Some college 1 or more years no degree, from ACS5 attribute: B15002_013E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>M_ASSODEG</attrlabl>
+        <attrdef>Male 25 or older, Associate's degree, from ACS5 attribute: B15002_014E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>M_BACHDEG</attrlabl>
+        <attrdef>Male 25 or older, Bachelor's degree, from ACS5 attribute: B15002_015E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>M_MASTDEG</attrlabl>
+        <attrdef>Male 25 or older, Master's degree, from ACS5 attribute: B15002_016E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>M_PROGDEG</attrlabl>
+        <attrdef>Male 25 or older, Professional school degree, from ACS5 attribute: B15002_017E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>M_DOCTDEG</attrlabl>
+        <attrdef>Male 25 or older, Doctorate degree, from ACS5 attribute: B15002_018E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>FEMALE_25PL</attrlabl>
+        <attrdef>Female, all in category 25 years or older, from ACS5 attribute: B15002_019E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>F_NOSCHOOL</attrlabl>
+        <attrdef>Female 25 or older, No schooling completed, from ACS5 attribute: B15002_020E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>F_NUR_4TH</attrlabl>
+        <attrdef>Female 25 or older, Nursery to 4th grade, from ACS5 attribute: B15002_021E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>F_5TH_6TH</attrlabl>
+        <attrdef>Female 25 or older, 5th and 6th grade, from ACS5 attribute: B15002_022E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>F_7TH_8TH</attrlabl>
+        <attrdef>Female 25 or older, 7th and 8th grade, from ACS5 attribute: B15002_023E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>F_9TH</attrlabl>
+        <attrdef>Female 25 or older, 9th grade, from ACS5 attribute: B15002_024E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>F_10TH</attrlabl>
+        <attrdef>Female 25 or older, 10th grade, from ACS5 attribute: B15002_025E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>F_11TH</attrlabl>
+        <attrdef>Female 25 or older, 11th grade, from ACS5 attribute: B15002_026E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>F_12THNODIP</attrlabl>
+        <attrdef>Female 25 or older, 12th grade no diploma, from ACS5 attribute: B15002_027E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>F_HS_GED</attrlabl>
+        <attrdef>Female 25 or older, High school graduate (includes equivalency), from ACS5 attribute: B15002_028E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>F_SOFECOLL1</attrlabl>
+        <attrdef>Female 25 or older, Some college less than 1 year, from ACS5 attribute: B15002_029E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>F_SOFECOLND</attrlabl>
+        <attrdef>Female 25 or older, Some college 1 or more years no degree, from ACS5 attribute: B15002_030E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>F_ASSODEG</attrlabl>
+        <attrdef>Female 25 or older, Associate's degree, from ACS5 attribute: B15002_031E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>F_BACHDEG</attrlabl>
+        <attrdef>Female 25 or older, Bachelor's degree, from ACS5 attribute: B15002_032E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>F_FASTDEG</attrlabl>
+        <attrdef>Female 25 or older, Master's degree, from ACS5 attribute: B15002_033E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>F_PROGDEG</attrlabl>
+        <attrdef>Female 25 or older, Professional school degree, from ACS5 attribute: B15002_034E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>F_DOCTDEG</attrlabl>
+        <attrdef>Female 25 or older, Doctorate degree, from ACS5 attribute: B15002_035E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>POP_3PL</attrlabl>
+        <attrdef>Estimated total population 3 years old or higher. (Universe for school enrollment), from ACS5 attribute: B14001_001E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>ENROLLED</attrlabl>
+        <attrdef>Estimated total population 3+ who are enrolled in school, from ACS5 attribute: B14001_002E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>PRESCHOOL</attrlabl>
+        <attrdef>Estimated total population 3+ enrolled in preschool, from ACS5 attribute: B14001_003E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>KNDRGRTN</attrlabl>
+        <attrdef>Estimated total population enrolled in kindergarten, from ACS5 attribute: B14001_004E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>GR_1_4</attrlabl>
+        <attrdef>Estimated total population enrolled in grades 1-4, from ACS5 attribute: B14001_005E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>GR_5_8</attrlabl>
+        <attrdef>Estimated total population enrolled in grades 5-8, from ACS5 attribute: B14001_006E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>GR_9_12</attrlabl>
+        <attrdef>Estimated total population enrolled in grades 9-12, from ACS5 attribute: B14001_007E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>UNDERGRAD</attrlabl>
+        <attrdef>Estimated total population enrolled in undergraduate studies, from ACS5 attribute: B14001_008E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>GRAD_PROF</attrlabl>
+        <attrdef>Estimated total population enrolled in graduate studies, from ACS5 attribute: B14001_009E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>MPOP_3PL</attrlabl>
+        <attrdef>Estimated male population 3 years old or higher, from ACS5 attribute: B14002_002E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>M_ENROL3PL</attrlabl>
+        <attrdef>Estimated male population 3 years old or higher, enrolled in school, from ACS5 attribute: B14002_003E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>FPOP_3PL</attrlabl>
+        <attrdef>Estimated female population 3 years old or higher, from ACS5 attribute: B14002_026E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>F_ENROL3PL</attrlabl>
+        <attrdef>Estimated female population 3 years old or higher, enrolled in school, from ACS5 attribute: B14002_027E</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>Persons in the associated geographic entity</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>county</attrlabl>
+        <attrdef>County FIPS Code from Bureau of the Census API</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>County FIPS Code</udom>
+        </attrdomv>
+      </attr>
+      <attr>
+        <attrlabl>state</attrlabl>
+        <attrdef>State FIPS Code from Bureau of the Census API (New Mexico is 35)</attrdef>
+        <attrdefs>Bureau of the Census</attrdefs>
+        <attrdomv>
+          <udom>State FIPS Code</udom>
+        </attrdomv>
+      </attr>
+    </detailed>
+  </eainfo>
+  <distinfo>
+    <distrib>
+      <cntinfo>
+        <cntorgp>
+          <cntorg>Earth Data Analysis Center</cntorg>
+        </cntorgp>
+        <cntpos>Clearinghouse Manager</cntpos>
+        <cntaddr>
+          <addrtype>mailing and physical address</addrtype>
+          <address>MSC01 1110</address>
+          <address>1 University of New Mexico</address>
+          <city>Albuquerque</city>
+          <state>NM</state>
+          <postal>87131-0001</postal>
+          <country>USA</country>
+        </cntaddr>
+        <cntvoice>505-277-3622 ext. 230</cntvoice>
+        <cntfax>505-277-3614</cntfax>
+        <cntemail>clearinghouse@edac.unm.edu</cntemail>
+        <hours>0800 - 1700 MT, M-F -7 hours GMT</hours>
+      </cntinfo>
+    </distrib>
+    <resdesc>Downloadable Data</resdesc>
+    <distliab>The material on this site is made available as a public service. Maps and data are to be used for reference purposes only and the Earth Data Analysis Center (EDAC), Resource Geographic Information System (RGIS) and The University of New Mexico are not responsible for any inaccuracies herein contained. No responsibility is assumed for damages or other liabilities due to the accuracy, availability, use or misuse of the information herein provided. Unless otherwise indicated in the documentation (metadata) for individual data sets, information on this site is public domain and may be copied without permission; citation of the source is appreciated.</distliab>
+    <stdorder>
+      <digform>
+        <digtinfo>
+          <formname>ZIP</formname>
+          <transize>5</transize>
+        </digtinfo>
+        <digtopt>
+          <onlinopt>
+            <computer>
+              <networka>
+                <networkr>http://rgis.unm.edu/</networkr>
+              </networka>
+            </computer>
+            <accinstr>Download from Resource Geographic Information System (RGIS) at http://rgis.unm.edu.</accinstr>
+          </onlinopt>
+        </digtopt>
+      </digform>
+      <fees>None. The files are available to download from Resource Geographic Information System (RGIS) (http://rgis.unm.edu).</fees>
+      <ordering>Contact Earth Data Analysis Center at clearinghouse@edac.unm.edu</ordering>
+    </stdorder> 
+    <custom>Contact Earth Data Analysis Center at clearinghouse@edac.unm.edu</custom>
+    <techpreq>Adequate computer capability is the only technical prerequisite for viewing data in digital form.</techpreq>
+  </distinfo>
+  <metainfo>
+    <metd>20200211</metd>
+    <metc>
+      <cntinfo>
+        <cntorgp>
+          <cntorg>Earth Data Analysis Center</cntorg>
+          <cntper>Earth Data Analysis Center</cntper>
+        </cntorgp>
+        <cntpos>Clearinghouse Manager</cntpos>
+        <cntaddr>
+          <addrtype>mailing and physical</addrtype>
+          <address>MSC01 1110</address>
+          <address>1 University of New Mexico</address>
+          <city>Albuquerque</city>
+          <state>New Mexico</state>
+          <postal>87131-0001</postal>
+          <country>US</country>
+        </cntaddr>
+        <cntvoice>505-277-3622 ext. 230</cntvoice>
+        <cntfax>505-277-3614</cntfax>
+        <cntemail>clearinghouse@edac.unm.edu</cntemail>
+        <hours>0800 - 1700 MT, M-F -7 hours GMT</hours>
+      </cntinfo>
+    </metc>
+    <metstdn>FGDC Content Standard for Digital Geospatial Metadata</metstdn>
+    <metstdv>FGDC-STD-001-1998</metstdv>
+    <mettc>local time</mettc>
+  </metainfo>
+</metadata>
