@@ -115,56 +115,57 @@
 #' @family looping functions
 #' @export
 #' @md
-loop_model <- function(space_coord,
-                       time_coord,
-                       data_for_model,
+loop_model <- function(spacetime_data,
                        outcome_col,
-                       path_to_model,
+                       model_function,
+                       data_prep_function = NULL,
                        min_train = 7,
                        max_train = Inf,
                        n_predict = 1,
                        model_arity = c("multi", "uni"),
-                       use_cache = FALSE,
-                       force = FALSE,
-                       save_environments = FALSE,
-                       verbose = interactive(),
-                       extra_model_args = list()) {
+                       prediction_strategy = c("NA", "truncate"),
+                       ...) {
+
+  extra_args <- list(...)
 
   ### Helper functions ----
-  wrap_data <- function(f) {
-    # NA's out the appropriate data, calls the model function, then patches the data
-    # back together.
-    force(f)
-    function(space_coord, time_coord, data_for_model, extra_model_args, .mask, .outcome_col) {
-
-      na_data_for_model <- data_for_model
-      na_data_for_model[.mask, .outcome_col] <- NA
-
-      ret_val <- do.call.with.dots(f,
-                                   space_coord,
-                                   time_coord,
-                                   na_data_for_model,
-                                   list_of_args = extra_model_args)
-      output_data <- ret_val[[2]]
-      output_data[.mask, .outcome_col] <- data_for_model[.mask, .outcome_col]
-      ret_val[[2]] <- output_data
-      return(ret_val)
+  make_data_for_model <- function(curr_data, curr_time_index, outcome_col, prediction_strategy) {
+    if (is.null(curr_data)) {
+      return(NULL)
     }
+    mask <- curr_data$id_time > curr_time_index
+
+    if (prediction_strategy == "NA") {
+      curr_data[mask, outcome_col] <- NA
+    } else if (prediction_strategy == "truncate") {
+      curr_data <- curr_data[!mask, ]
+    } else {
+      stop("Invalid value for 'prediction_strategy'")
+    }
+    return(curr_data)
   }
 
 
   ### Argument checks ----
-  space_coord <- gridcoord::gc_gridcoord(space_coord)
-  time_coord <- gridcoord::gc_gridcoord(time_coord)
-  check_type(data_for_model, "data.frame")
+  # space_coord <- gridcoord::gc_gridcoord(space_coord)
+  # time_coord <- gridcoord::gc_gridcoord(time_coord)
+  check_type(spacetime_data, "data.frame")
+  if (!"id_space" %in% colnames(spacetime_data) || !"id_time" %in% colnames(spacetime_data)) {
+    stop_subclass("spacetime_data must have numeric columns 'id_space' and 'id_time' identifying the space and time coordinates")
+  }
+
+  check_type(spacetime_data$id_space, "integer")
+  check_type(spacetime_data$id_time, "integer")
+
   check_scalar_type(outcome_col, "character")
-  check_scalar_type(path_to_model, c("character", "function"))
+  check_scalar_type(model_function, "function") # Fewer options makes life easier
+  check_type(data_prep_function, c("NULL", "function"))
   check_scalar_type(min_train, "integer")
   check_scalar_type(max_train, "integer")
   if (min_train < 1) {
     stop_subclass("min_train must be a positive integer", .subclass = "error_bad_arg_value")
   }
-  if (min_train >= nrow(time_coord)) {
+  if (min_train >= max(spacetime_data$id_time)) {
     stop_subclass("min_train is greater than or equal to the number of distinct time points. ",
                        "Unable to calculate any model fits.", .subclass = "error_bad_arg_value")
   }
@@ -174,148 +175,80 @@ loop_model <- function(space_coord,
   }
   check_scalar_type(n_predict, "integer")
   model_arity <- match.arg(model_arity)
-  check_scalar_type(use_cache, "logical")
-  # Force and save_environments passed through to cache_wrap
-
-  # Extra checks that data_for_model and our coordinates line up
-  data_for_model <- match_coords_and_data(space_coord, time_coord, data_for_model)
+  prediction_strategy <- match.arg(prediction_strategy)
 
 
-  ### Transform into gridlists ----
-  if (model_arity == "uni" && is_multiariate(space_coord, data_for_model)) {
-    # Split the data spatially
-    # This is required if the model can only handle one output stream (e.g. some ARIMA models), but
-    # the data has multiple spatial areas.
-    data_for_model <- gridcoord::gcl_gridlist(data_for_model, space_coord)
-    space_coord <- space_coord_split(space_coord)
-    total_space <- nrow(data_for_model)
+
+  ### Deal with arity  ----
+  if (model_arity == "uni") {
+    spacetime_data = spacetime_data %>%
+      group_by(id_space)
+  }
+
+
+
+#
+#   ### Create progress bar
+#   progress_bar <- dot_progress_functional(total = total_space,
+#                                           dot_every = 1,
+#                                           number_every = 5,
+#                                           title = "Calculating model fits",
+#                                           verbose = verbose)
+
+  # Ok, now our goal is to basically have a data.frame with columns
+  # id_space, id_time, data, fit
+  # Use the slider package to divide the data neatly up into chunks:
+
+  # We have an irregular fitting window, so need a special function to
+  # define the before index
+  before_func <- function(x) {
+    ifelse(x < min_train,
+           -1,
+           pmax(x - max_train + 1, 1))
+  }
+  spacetime_data <-
+    spacetime_data %>%
+    arrange(id_time) %>%
+    mutate(curr_data = slide_index(cur_data(), id_time,
+                                   function(df) df,
+                                   .before = before_func,
+                                   .after = n_predict,
+                                   .complete = TRUE))
+
+  # Then use the prediction_strategy to come up with a new data to feed into the model:
+  spacetime_data <- spacetime_data %>%
+    rowwise() %>%
+    mutate(data_for_model = list(make_data_for_model(curr_data, id_time, outcome_col, prediction_strategy)))
+
+
+  if (!is.null(data_prep_function)) {
+    spacetime_data <- spacetime_data %>%
+      rowwise() %>%
+      mutate(args_for_model = data_prep_function(data_for_model))
   } else {
-    total_space <- 1
+    spacetime_data <- spacetime_data %>%
+      mutate(args_for_model = list(data_for_model))
   }
 
 
-  ### Load the model function ----
-  if (is.function(path_to_model)) {
-    model_function <- path_to_model
-    path_to_model <- fix_up_path(deparse(substitute(path_to_model)))
+  fits <- list()
 
-  } else if (is.character(path_to_model)) {
-    model_function <- magic_function_loader(path_to_model)
-  }
-
-
-
-  ### Set up caching ----
-  # Wrap the function so we have the fit and data together
-  wrapped_model_function <- wrap_data(model_function)
-  if (use_cache) {
-    cache_dir <- file.path("cache_model_fits",
-                           tools::file_path_sans_ext(basename(path_to_model)))
-  } else {
-    cache_dir <- NULL
-  }
-  cached_wrapped_model_function <- simplecache::cache_wrap(wrapped_model_function,
-                                                           cache_dir,
-                                                           hash_in_name = FALSE,
-                                                           save_environments = save_environments)
-  force <- parse_force(force, time_coord)
-
-  ### Create progress bar
-  progress_bar <- dot_progress_functional(total = total_space,
-                                          dot_every = 1,
-                                          number_every = 5,
-                                          title = "Calculating model fits",
-                                          verbose = verbose)
-
-
-  ### Loop over spatial regions ----
-  if (is_type(data_for_model, "gridlist")) {
-    return_accum <- list()
-    for (space_ind in seq_len(nrow(data_for_model))) {
-      curr_data <- gridcoord::gcl_collapse(data_for_model[space_ind, , drop = FALSE],
-                                           collapse_by = "space")[[1, 1]]
-
-      curr_space_coord <- space_coord[[space_ind]]
-      curr_space_name <- gridcoord::gc_get_labels(curr_space_coord)[[1]]
-      return_accum[[curr_space_name]] <-
-        loop_model_int(curr_space_coord, time_coord, curr_data, outcome_col,
-                       cached_wrapped_model_function,
-                       force,
-                       min_train, max_train, n_predict,
-                       extra_model_args,
-                       progress_bar)
-
-
+  for (i in seq_len(nrow(spacetime_data))) {
+    curr_row <- spacetime_data[i, ]
+    if (identical(curr_row$curr_data, list(NULL))) {
+      fits[i] <- list(NULL)
+    } else {
+      fits[[i]] <- rlang::exec(model_function, !!!curr_row$args_for_model, !!!extra_args)
     }
-    # After this loop, we're organized as space - x/y/z - time
-    # loop transpose to get x/y/z - space - time
-    # Then turn each element in a gridlist and return.
-    rets <- lapply(list_transpose(return_accum),
-                   gridcoord::gcl_gridlist,
-                   space_coord = do.call(rbind, space_coord),
-                   time_coord = time_coord)
-    return(rets)
-  } else {
-    rets <- loop_model_int(space_coord, time_coord, data_for_model, outcome_col,
-                   cached_wrapped_model_function,
-                   force,
-                   min_train, max_train, n_predict,
-                   extra_model_args,
-                   progress_bar)
-    return(rets)
-  }
-}
-
-loop_model_int <- function(space_coord,
-                           time_coord,
-                           data_for_model,
-                           outcome_col,
-                           model_function,
-                           force,
-                           min_train,
-                           max_train,
-                           n_predict,
-                           extra_model_args,
-                           progress_bar) {
-
-  # The internal function just takes care of looping over end dates
-
-  tc_name <- gridcoord::gc_get_name(time_coord)
-  all_returns <- list()
-  last_training_tinds <- seq(min_train, nrow(time_coord) - 1, by = n_predict)
-  total_time <- length(last_training_tinds)
-
-  for (ind in last_training_tinds) {
-    start_ind <- max(ind - max_train + 1, 1)
-    fin_ind <- min(ind + n_predict, nrow(time_coord))
-    prediction_inds <- seq(ind + 1, fin_ind, by = 1)
-    curr_time_label <- as.character(gridcoord::gc_get_labels(time_coord)[[fin_ind]])
-    prediction_labels <- gridcoord::gc_get_labels(time_coord)[prediction_inds]
-
-    cache_name <- build_cache_name(curr_time_label, space_coord)
-
-
-    # Subset the data by time
-    limited_time_coord <- time_coord[start_ind:fin_ind, , drop = FALSE]
-    limited_data <- gridcoord::gc_pare(data_for_model, limited_time_coord)
-    m <- limited_data[[tc_name]] %in% prediction_labels
-    fit_and_data <- model_function(space_coord,
-                                   limited_time_coord,
-                                   limited_data,
-                                   extra_model_args,
-                                   .name_prefix = cache_name,
-                                   .force = force[[curr_time_label]],
-                                   .mask = m,
-                                   .outcome_col = outcome_col)
-    # Accumulate the result, update progress bar
-    all_returns[[curr_time_label]] <- fit_and_data
-    progress_bar(step = 1 / total_time)
   }
 
-  # Transpose the lists and pad with NAs
-  fits_and_data <- list_transpose(all_returns)
-  padded_fits_and_data <- lapply(fits_and_data, pad_with_nas, coord = time_coord)
-  return(padded_fits_and_data)
+  spacetime_data$model_fit = fits
+  spacetime_data <- spacetime_data %>%
+    ungroup() %>%
+    select(-data_for_model, -args_for_model)
+  return(spacetime_data)
 }
+
+
 
 
