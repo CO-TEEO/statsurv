@@ -3,7 +3,7 @@
     "path": "~/r-analysis/statsurv/R/loop_model.R",
     "project_path": "R/loop_model.R",
     "type": "r_source",
-    "hash": "4031953670",
+    "hash": "0",
     "contents": "",
     "dirty": false,
     "created": 1637099581454.0,
@@ -12,15 +12,15 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "248,0",
-        "scrollLine": "229"
+        "cursorPosition": "273,18",
+        "scrollLine": "257"
     },
     "folds": "",
-    "lastKnownWriteTime": 1637163625,
+    "lastKnownWriteTime": 1637173415,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1637163625203,
+    "last_content_update": 1637173415553,
     "read_only": false,
     "read_only_alternatives": []
 }

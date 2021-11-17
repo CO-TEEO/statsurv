@@ -78,6 +78,13 @@ is_type <- function(x, desired_type) {
 }
 
 
+ensure_list <- function(x) {
+  if (is.data.frame(x) || !is.list(x) ) {
+    return(list(x))
+  } else {
+    return(x)
+  }
+}
 
 stop_subclass <- function(..., .subclass = NULL) {
   message <- paste0(...)

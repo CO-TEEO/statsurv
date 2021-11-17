@@ -18,306 +18,178 @@ time_coord <- data.frame(time_labels = labels,
 data_for_model <- gridcoord::gc_expand(time_coord, space_coord)
 data_for_model$y <- data_for_model$time * 1.05 + rnorm(n = nrow(data_for_model))
 
-simple_lm_func <- function(space_coord, time_coord, data_for_model) {
+
+spacetime_data <- data_for_model %>%
+  dplyr::mutate(id_space = as.numeric(factor(space_label)),
+         id_time = time) %>%
+  tibble::as_tibble() %>%
+  dplyr::select(id_space, id_time, time, fin_time, y)
+
+simple_lm_func <- function(data_for_model) {
   fit <- lm(y ~ time,
             data = data_for_model)
-  return(list(fit = fit,
-              data = data_for_model))
+  return(fit)
 }
 
-medium_lm_func <- function(space_coord, time_coord, data_for_model) {
-  fit <- lm(y ~ time + factor(space_label),
+medium_lm_func <- function(data_for_model) {
+  fit <- lm(y ~ time + factor(id_space),
             data = data_for_model)
-  return(list(fit = fit,
-              data = data_for_model))
+  return(fit)
 }
 
-get_unique_tc <- function(all_fits_and_data) {
-  res <- lapply(all_fits_and_data[[2]],
+get_unique_tc <- function(spacetime_data) {
+  res <- lapply(spacetime_data$curr_data,
          function(x) {
-           if (length(x) == 1 && is.na(x)) {
+           if (is.null(x)) {
              return(NULL)
            } else {
-             return(unique(x$time))
+             return(unique(x$id_time))
            }
          })
   res[!vapply(res, is.null, logical(1))]
 }
 
-just_windows <- function(min_train, max_train = Inf, n_predict = 1) {
-  loop_model(space_coord, time_coord, data_for_model,
-              "y", simple_lm_func, model_arity = "multi",
-              use_cache = FALSE, verbose = FALSE,
-              min_train = min_train, max_train = max_train, n_predict = 1)
-}
-
-just_coord_data <- function(space_coord, time_coord, data_for_model) {
-  suppressWarnings(loop_model(space_coord, time_coord, data_for_model,
-             "y", simple_lm_func, model_arity = "multi", verbose = FALSE,
-             use_cache = FALSE, min_train = 7, n_predict = 2))
-}
-
-check_exlist <- function(gridlist, inner_value) {
-  expect_true(is_type(gridlist, "gridlist"))
-  for (time_ex in gridlist) {
-    for (ex in time_ex) {
-      if (length(ex) == 1 && is.na(ex)) {
-        next
-      }
-      expect_equal(ex, inner_value)
-    }
-  }
-}
 
 test_that("loop_model behaves consistently", {
-  fits_and_data <- loop_model(space_coord, time_coord, data_for_model,
-                                 "y", simple_lm_func,  model_arity = "multi", use_cache =  FALSE,
-                              min_train = 7, verbose = FALSE)
+  fits_and_data <- loop_model(spacetime_data, "y", simple_lm_func,
+                              model_arity = "multi",
+                              min_train = 7)
   expect_known_value(fits_and_data, file = "simple_lm_output.RDS")
-
-  d1 <- fits_and_data[[2]][["X8"]]
-  d2 <- data_for_model[data_for_model$time <= 8, ]
-  rownames(d1) <- NULL
-  rownames(d2) <- NULL
-  expect_equal(d1, d2)
 })
 
 test_that("loop_model behaves consistently if exploded", {
-  fits_and_data <- loop_model(space_coord, time_coord, data_for_model,
-                              "y", simple_lm_func,  model_arity = "uni", use_cache =  FALSE,
-                              min_train = 7, verbose = FALSE)
+  fits_and_data <- loop_model(spacetime_data, "y", simple_lm_func,
+                              model_arity = "uni",
+                              min_train = 7)
   expect_known_value(fits_and_data, file = "simple_lm_output_exploded.RDS")
 
 })
 
-test_that("We run a model if a space coord is a df, a spdf, or an sf", {
-  # And all of them should really give the same result
-  space_coord_spdf <- rgdal::readOGR("three_zips/three_zips.shp",
-                                     verbose = FALSE,
-                                     stringsAsFactors = FALSE)
-  space_coord_df <- space_coord_spdf@data
-  space_coord_sf <- sf::st_read("three_zips/three_zips.shp",
-                                quiet = TRUE,
-                                stringsAsFactors = FALSE)
-  all_res <- list()
-  ind <- 0
 
-  curr_data <- gridcoord::gc_expand(time_coord, space_coord_df)
-  y <- curr_data$time * 1.05 + rnorm(n = nrow(curr_data))
-  for (sc in list(space_coord_spdf, space_coord_df, space_coord_sf)) {
-    curr_data <- gridcoord::gc_expand(time_coord, sc)
-    curr_data$y <- y
-    curr_res <- loop_model(sc, time_coord, curr_data,
-                           "y", simple_lm_func,  model_arity = "multi", use_cache =  FALSE,
-                           min_train = 7, verbose = FALSE)
-    ind <- ind + 1
-    all_res[[ind]] <- curr_res
-  }
-  expect_equal(all_res[[2]], all_res[[1]])
-  expect_equal(all_res[[3]], all_res[[2]])
 
-  all_res <- list()
-  ind <- 0
-  for (sc in list(space_coord_spdf, space_coord_df, space_coord_sf)) {
-    curr_data <- gridcoord::gc_expand(time_coord, sc)
-    curr_data$y <- y
-    curr_res <- loop_model(sc, time_coord, curr_data,
-                           "y", simple_lm_func,  model_arity = "uni", use_cache =  FALSE,
-                           min_train = 7, verbose = FALSE)
-    ind <- ind + 1
-    all_res[[ind]] <- curr_res
-  }
-  expect_equivalent(all_res[[2]], all_res[[1]]) # The space coordinates are different, so compare
-  # with expect_equivalent
-  expect_equivalent(all_res[[3]], all_res[[2]])
-
-})
 test_that("data windowing behaves corrects", {
   # Our window grows as we go forward in time
-  fits_and_data <- loop_model(space_coord, time_coord, data_for_model,
-                              "y", simple_lm_func,  model_arity = "multi", use_cache =  FALSE,
-                              min_train = 7, verbose = FALSE)
+  fits_and_data <- loop_model(spacetime_data, "y", simple_lm_func,
+                              model_arity = "multi",
+                              min_train = 7)
   all_uniq_tc <- get_unique_tc(fits_and_data)
   # good_ones <- all_uniq_t/c[!vapply(all_uniq_tc, is.null, logical(1))]
-  expect_equal(names(all_uniq_tc), paste0("X", 8:12))
-  expect_equal(all_uniq_tc[["X8"]], 1:8)
-  expect_equal(all_uniq_tc[["X9"]], 1:9)
-  expect_equal(all_uniq_tc[["X12"]], 1:12)
+
+  expect_equal(all_uniq_tc[[1]], 1:8)
+  expect_equal(all_uniq_tc[[2]], 1:9)
+  expect_equal(all_uniq_tc[[5]], 1:12)
 
   # Out window stops growing when it hits max_train
-  all_uniq_tc <- loop_model(space_coord, time_coord, data_for_model,
-                            "y", simple_lm_func,  model_arity = "multi", use_cache =  FALSE,
-                            min_train = 7, max_train = 10, verbose = FALSE) %>%
+  all_uniq_tc <- loop_model(spacetime_data, "y", simple_lm_func,
+                            model_arity = "multi",
+                            min_train = 7, max_train = 10) %>%
     get_unique_tc()
-  expect_equal(names(all_uniq_tc), paste0("X", 8:12))
-  expect_equal(all_uniq_tc[["X8"]], 1:8)
-  expect_equal(all_uniq_tc[["X9"]], 1:9)
-  expect_equal(all_uniq_tc[["X12"]], 2:12)
+  expect_equal(all_uniq_tc[[1]], 1:8)
+  expect_equal(all_uniq_tc[[2]], 1:9)
+  expect_equal(all_uniq_tc[[5]], 2:12)
 
   # We can step forward in chunks, if it's not an equal-subdivision of time_coord
-  all_uniq_tc <- loop_model(space_coord, time_coord, data_for_model,
-                            "y", simple_lm_func,  model_arity = "multi", use_cache =  FALSE,
-                            min_train = 7, max_train = 8, n_predict = 3, verbose = FALSE) %>%
+  # I haven't implemented this
+  all_uniq_tc <- loop_model(spacetime_data, "y", simple_lm_func,
+                            model_arity = "multi",
+                            min_train = 7, max_train = 7, n_predict = 2, step = 2) %>%
+    dplyr::rowwise() %>%
+    dplyr::filter(!is.null(model_fit)) %>%
+    dplyr::ungroup() %>%
     get_unique_tc()
-  expect_equal(names(all_uniq_tc), c("X10", "X12"))
-  expect_equal(all_uniq_tc[["X10"]], 1:10)
-  expect_equal(all_uniq_tc[["X12"]], 3:12)
+  expect_equal(length(all_uniq_tc), 2)
+  expect_equal(all_uniq_tc[[1]], 1:9)
+  expect_equal(all_uniq_tc[[2]], 3:11)
 
   # We can step forward in chunks, if it is an equal-subdivision of time_coord
-  all_uniq_tc <- loop_model(space_coord, time_coord, data_for_model,
-                            "y", simple_lm_func,  model_arity = "multi", use_cache =  FALSE,
-                            min_train = 8, max_train = 8, n_predict = 2, verbose = FALSE) %>%
+  all_uniq_tc <- loop_model(spacetime_data, "y", simple_lm_func,
+                            model_arity = "multi",
+                            min_train = 8, max_train = 8, n_predict = 2, step = 2) %>%
+    dplyr::rowwise() %>%
+    dplyr::filter(!is.null(model_fit)) %>%
+    dplyr::ungroup() %>%
     get_unique_tc()
-  expect_equal(names(all_uniq_tc), c("X10", "X12"))
-  expect_equal(all_uniq_tc[["X10"]], 1:10)
-  expect_equal(all_uniq_tc[["X12"]], 3:12)
+  expect_equal(length(all_uniq_tc), 2)
+  expect_equal(all_uniq_tc[[1]], 1:10)
+  expect_equal(all_uniq_tc[[2]], 3:12)
 
   # We can step forward in just one chunk
-  all_uniq_tc <- loop_model(space_coord, time_coord, data_for_model,
-                            "y", simple_lm_func,  model_arity = "multi", use_cache =  FALSE,
-                            min_train = 10, n_predict = 3, verbose = FALSE) %>%
+  all_uniq_tc <- loop_model(spacetime_data, "y", simple_lm_func,
+                            model_arity = "multi",
+                            min_train = 10, n_predict = 2, step = 2) %>%
     get_unique_tc()
-  expect_equal(names(all_uniq_tc), c("X12"))
-  expect_equal(all_uniq_tc[["X12"]], 1:12)
+  expect_equal(length(all_uniq_tc), 1)
+  expect_equal(all_uniq_tc[[1]], 1:12)
 })
 
-test_that("data windowing throws an error if we call it with non-sensical arguments", {
-  expect_error(just_windows(min_train = "A"), class = "error_type")
-  expect_error(just_windows(min_train = 0), class = "error_bad_arg_value")
-  expect_error(just_windows(min_train = nrow(time_coord)), class = "error_bad_arg_value")
-  expect_error(just_windows(min_train = 7, max_train = 4), class = "error_bad_arg_value")
-  expect_error(just_windows(min_train = -1, max_train = 0), class = "error_bad_arg_value")
-  expect_error(just_windows(min_train = 8, max_train  = "A"), class = "error_type")
-  # I don't think n_predict should affect any of these results - we figure out how many things to
-  # train on, and then predict on the remainds
-})
 
-test_that("Throws error if colnames or labels don't match between coordinates and data_for_model", {
-  # Ok, we do have to think about this
-  # We have the problem that we have no way change the time_coord and space_coord in the
-  # top-level script. So we should be very careful with any modifications we have to make in the
-  # coordinate.
-  # But, ok, the basic thing
-  space_coord_badcolname <- data.frame("bad_space_title" = c("space1", "space2", "space3"),
-                                       stringsAsFactors = FALSE) %>%
-    gridcoord::gc_gridcoord()
-  space_coord_badlabels <- data.frame("space_label" = c("space10", "space20", "space30"),
-                                stringsAsFactors = FALSE) %>%
-    gridcoord::gc_gridcoord()
 
-  time_coord_badcolname <- cbind(data.frame("bad_time_title" = time_coord$time_labels,
-                                     stringsAsFactors = FALSE),
-                          time_coord[, 2:3])
 
-  time_coord_badlabels <- time_coord
-  time_coord_badlabels$time_labels <- paste0("X", time_coord$time_labels)
 
-  expect_error(just_coord_data(space_coord_badcolname, time_coord, data_for_model),
-               class = "error_bad_arg_value")
-  expect_error(just_coord_data(time_coord_badcolname, time_coord, data_for_model),
-               class = "error_bad_arg_value")
-  expect_error(just_coord_data(space_coord_badlabels, time_coord, data_for_model),
-               class = "error_bad_arg_value")
-  expect_error(just_coord_data(space_coord, time_coord_badlabels, data_for_model),
-               class = "error_bad_arg_value")
-
-  data_for_model_unequal <- data_for_model[-(33:36), ]
-  expect_error(just_coord_data(space_coord, time_coord, data_for_model_unequal),
-               class = "error_bad_arg_value")
-})
-
-test_that("Passing list-arguments into and out of our model works correctly", {
-  weird_fit_fun <- function(space_coord, time_coord, data_for_model, list_arg, other_arg) {
+test_that("Passing list-arguments into our model works correctly", {
+  weird_fit_fun <- function(data_for_model, list_arg, other_arg) {
     force(list_arg)
     force(other_arg)
     list_arg[[1]] <- list_arg[[1]] + other_arg
     fit <- lm(y ~ time,
               data = data_for_model)
     # test comment
-    return(list(fit = fit,
-                data = data_for_model,
-                extra = list_arg,
-                out4 = 15))
-
+    return(fit)
   }
   arg1 <- list(a = 14, b = 22)
   arg2 <- 104
-  all_results <- loop_model(space_coord, time_coord, data_for_model, "y", use_cache = FALSE,
-                            weird_fit_fun, verbose = FALSE,
-                            extra_model_args = list(list_arg = arg1, other_arg = arg2))
-  all_extra <- all_results[[3]]
-  all_good_extra <- all_extra[!is_singular_na(all_extra)]
-  for (ex in all_good_extra) {
-    expect_equal(ex, list(a = 118, b = 22))
+  all_results <- loop_model(spacetime_data, "y", weird_fit_fun,
+                            list_arg = arg1, other_arg = arg2)
+
+})
+
+test_that("We can use the data-prep function", {
+  data_prep_fun <- function(curr_data) {
+    curr_data <- curr_data %>%
+      dplyr::mutate(mean_y = mean(y))
+    # over_7_flag <- mean(curr_data$y) > 7
+    return(list(curr_data))
   }
 
-
-  model_name <- transfer_to_file(weird_fit_fun)
-  all_results <- loop_model(space_coord, time_coord, data_for_model, "y",
-                            model_arity = "uni", use_cache = FALSE,
-                            weird_fit_fun, verbose = TRUE,
-                            extra_model_args = list(list_arg = arg1,
-                                                    other_arg = arg2))
-  all_extra <- all_results[[3]]
-  expect_true(is_type(all_extra, "gridlist"))
-  for (space_ex in all_extra) {
-    for (ex in space_ex) {
-      if (length(ex) == 1 && is.na(ex)) {
-        next
-      }
-      expect_equal(ex, list(a = 118, b = 22))
+  fit_fun <- function(data_for_model, use_mean = FALSE) {
+    if (use_mean) {
+      fit <- lm(y ~ time + mean_y,
+                data = data_for_model)
+    } else {
+      fit <- lm(y ~ time,
+                data = data_for_model)
     }
+    return(fit)
   }
+  loop_model(spacetime_data, "y", fit_fun, data_prep_fun)
+
 })
 
-test_that("We can pass 4+ arguments in and out of our model function", {
-  long_fit_fun <- function(space_coord, time_coord, data_for_model, a, b, c2, d, e, f) {
-    # browser()
-    data_for_model$sum <- mean(a + b + c2 + d + e + f + 1)
-    fit <- lm(y ~ time,
-              data = data_for_model)
-    out1 <- "A"; out2 <- "B"; out3 <- "C"; out4 <- "D"
-    return(list(fit = fit,
-                data = data_for_model,
-                out1 = out1,
-                out2 = out2,
-                out3 = out3,
-                out4 = out4))
-  }
-  all_results <- loop_model(space_coord, time_coord, data_for_model, "y",
-                            model_arity = "uni", use_cache = FALSE,
-                            long_fit_fun, verbose = FALSE,
-                            extra_model_args = list(a = 10, b = 11, c2 = c(1, 3, 4),
-                            d = 18, e = 103, f = -104))
-
-
-  check_exlist(all_results[[3]], "A")
-  check_exlist(all_results[[4]], "B")
-  check_exlist(all_results[[5]], "C")
-  check_exlist(all_results[[6]], "D")
-})
 
 test_that("We can modify data inside the model function and use it later", {
-  mod_lm_func <- function(space_coord, time_coord, data_for_model) {
+  data_prep_fun <- function(data_for_model) {
     data_for_model$t_4 <- pmax(data_for_model$time - 4, 0)
+    data_for_model
+    }
+
+  mod_lm_func <- function(data_for_model) {
     fit <- lm(y ~ time + t_4,
               data = data_for_model)
-    return(list(fit = fit,
-                data = data_for_model))
+    return(fit)
   }
-  fits_and_data <- loop_model(space_coord, time_coord, data_for_model,
-                              "y", mod_lm_func,  model_arity = "multi", use_cache =  FALSE,
-                              min_train = 7, verbose = FALSE)
-  all_data <- fits_and_data[[2]]
-  curr_data <- all_data[["X9"]][all_data[["X9"]]$space_label == "space1", ]
-  t_4 <- c(0, 0, 0, 0, 1, 2, 3, 4, 5)
-  expect_equal(curr_data$t_4, t_4)
+  fits_and_data <- loop_model(spacetime_data, "y", mod_lm_func, data_prep_fun,
+                              model_arity = "multi",
+                              min_train = 7)
+  # all_data <- fits_and_data[[2]]
+  # curr_data <- all_data[["X9"]][all_data[["X9"]]$space_label == "space1", ]
+  # t_4 <- c(0, 0, 0, 0, 1, 2, 3, 4, 5)
+  # expect_equal(curr_data$t_4, t_4)
 
-  fits_and_data <- loop_model(space_coord, time_coord, data_for_model,
-                              "y", mod_lm_func,  model_arity = "uni", use_cache =  FALSE,
-                              min_train = 7, verbose = FALSE)
-  curr_data <- fits_and_data[[2]][["space2", "X9"]]
-  expect_equal(curr_data$t_4, t_4)
+  fits_and_data <- loop_model(spacetime_data, "y", mod_lm_func, data_prep_fun,
+                             model_arity = "uni",
+                              min_train = 7)
+  # curr_data <- fits_and_data[[2]][["space2", "X9"]]
+  # expect_equal(curr_data$t_4, t_4)
 })
 
 

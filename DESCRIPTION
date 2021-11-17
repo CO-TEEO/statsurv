@@ -34,7 +34,8 @@ Imports:
     Matrix,
     MASS,
     stats,
-    sf
+    sf,
+    slider
 Suggests:
     testthat (>= 2.1.0),
     knitr,

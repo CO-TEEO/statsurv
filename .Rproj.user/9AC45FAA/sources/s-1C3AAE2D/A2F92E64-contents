@@ -122,6 +122,7 @@ loop_model <- function(spacetime_data,
                        min_train = 7,
                        max_train = Inf,
                        n_predict = 1,
+                       step = 1,
                        model_arity = c("multi", "uni"),
                        prediction_strategy = c("NA", "truncate"),
                        ...) {
@@ -130,9 +131,6 @@ loop_model <- function(spacetime_data,
 
   ### Helper functions ----
   make_data_for_model <- function(curr_data, curr_time_index, outcome_col, prediction_strategy) {
-    if (is.null(curr_data)) {
-      return(NULL)
-    }
     mask <- curr_data$id_time > curr_time_index
 
     if (prediction_strategy == "NA") {
@@ -144,6 +142,19 @@ loop_model <- function(spacetime_data,
     }
     return(curr_data)
   }
+
+  skipping_nulls <- function(f) {
+    force(f)
+    function(x, ...) {
+      if (is.null(x)) {
+        return(NULL)
+      } else {
+        return(f(x, ...))
+      }
+    }
+  }
+
+    make_data_for_model <- skipping_nulls(make_data_for_model)
 
 
   ### Argument checks ----
@@ -182,18 +193,9 @@ loop_model <- function(spacetime_data,
   ### Deal with arity  ----
   if (model_arity == "uni") {
     spacetime_data = spacetime_data %>%
-      group_by(id_space)
+      dplyr::group_by(id_space)
   }
 
-
-
-#
-#   ### Create progress bar
-#   progress_bar <- dot_progress_functional(total = total_space,
-#                                           dot_every = 1,
-#                                           number_every = 5,
-#                                           title = "Calculating model fits",
-#                                           verbose = verbose)
 
   # Ok, now our goal is to basically have a data.frame with columns
   # id_space, id_time, data, fit
@@ -208,44 +210,68 @@ loop_model <- function(spacetime_data,
   }
   spacetime_data <-
     spacetime_data %>%
-    arrange(id_time) %>%
-    mutate(curr_data = slide_index(cur_data(), id_time,
+    dplyr::arrange(id_time) %>%
+    dplyr::mutate(curr_data = slider::slide_index(dplyr::cur_data(), id_time,
                                    function(df) df,
                                    .before = before_func,
                                    .after = n_predict,
                                    .complete = TRUE))
 
+  if (model_arity == "multi") {
+    spacetime_data <- spacetime_data %>%
+      dplyr::group_by(id_time) %>%
+      dplyr::filter(dplyr::row_number() == 1)
+  }
+
   # Then use the prediction_strategy to come up with a new data to feed into the model:
   spacetime_data <- spacetime_data %>%
-    rowwise() %>%
-    mutate(data_for_model = list(make_data_for_model(curr_data, id_time, outcome_col, prediction_strategy)))
+    dplyr::rowwise() %>%
+    dplyr::mutate(data_for_model = list(make_data_for_model(curr_data, id_time, outcome_col, prediction_strategy)))
 
 
   if (!is.null(data_prep_function)) {
+    data_prep_function2 <- skipping_nulls(data_prep_function)
     spacetime_data <- spacetime_data %>%
-      rowwise() %>%
-      mutate(args_for_model = data_prep_function(data_for_model))
+      dplyr::rowwise() %>%
+      dplyr::mutate(args_for_model = list(ensure_list(data_prep_function2(data_for_model))))
   } else {
     spacetime_data <- spacetime_data %>%
-      mutate(args_for_model = list(data_for_model))
+      dplyr::rowwise() %>%
+      dplyr::mutate(args_for_model = list(list(data_for_model)))
   }
 
 
-  fits <- list()
+  spacetime_data <- spacetime_data %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(.row_id = dplyr::row_number())
 
-  for (i in seq_len(nrow(spacetime_data))) {
+  # Do some work to figure out what rows to run on:
+  wanted_row_ids <- spacetime_data %>%
+    dplyr::rowwise() %>%
+    dplyr::filter(!is.null(curr_data)) %>%
+    dplyr::group_by(id_space) %>%
+    dplyr::filter((dplyr::row_number() - 1) %% step == 0) %>%
+    dplyr::pull(.row_id)
+
+  p <- progressr::progressor(length(wanted_row_ids))
+
+  fits <- rep(list(NULL), nrow(spacetime_data))
+  for (i in wanted_row_ids) {
     curr_row <- spacetime_data[i, ]
     if (identical(curr_row$curr_data, list(NULL))) {
       fits[i] <- list(NULL)
     } else {
-      fits[[i]] <- rlang::exec(model_function, !!!curr_row$args_for_model, !!!extra_args)
+      fits[[i]] <- rlang::exec(model_function, !!!spacetime_data$args_for_model[[i]], !!!extra_args)
     }
+    p()
   }
 
   spacetime_data$model_fit = fits
   spacetime_data <- spacetime_data %>%
-    ungroup() %>%
-    select(-data_for_model, -args_for_model)
+    dplyr::ungroup() %>%
+    dplyr::rename(training_data = data_for_model,
+                  curr_data = curr_data) %>%
+    dplyr::select(-args_for_model, -.row_id)
   return(spacetime_data)
 }
 
