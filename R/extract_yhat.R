@@ -69,7 +69,7 @@
 #'
 #' sample_yhat(nm_county_coord, year_coord, fit_inla, NM_popcas, n_samples = 10)
 #' }
-extract_yhat <- function(space_coord, time_coord, fit, data, ...) {
+extract_yhat <- function(fit, data, ...) {
  UseMethod("extract_yhat", fit)
 }
 
@@ -77,25 +77,19 @@ extract_yhat <- function(space_coord, time_coord, fit, data, ...) {
 #' @param n_samples The number of random samples of the fitted values to draw.
 #' @describeIn extract_yhat Return random samples for fitted values
 #' @export
-sample_yhat <- function(space_coord, time_coord, fit, data, n_samples = 10) {
+sample_yhat <- function(fit, data, n_samples = 10) {
   UseMethod("sample_yhat", fit)
 }
 
 
 #' @export
-extract_yhat.lm <- function(space_coord, time_coord, fit, data, ...) {
-  sc_name <- gridcoord::gc_get_name(space_coord)
-  tc_name <- gridcoord::gc_get_name(time_coord)
-  yhat <- data.frame(v1 = data[[sc_name]],
-                     v2 = data[[tc_name]],
-                     v3 = stats::predict(fit, data, type = "response"),
-                     stringsAsFactors = FALSE)
-  colnames(yhat) <- c(sc_name, tc_name, "yhat")
-  return(yhat)
+extract_yhat.lm <- function(fit, data, ...) {
+  data$.fitted <- stats::predict(fit, newdata = data, type = "response")
+  return(data)
 }
 
 #' @export
-sample_yhat.lm <- function(space_coord, time_coord, fit, data, n_samples) {
+sample_yhat.lm <- function(fit, data, n_samples) {
 
   if (identical(class(fit), c("negbin", "glm", "lm"))) {
     # A workaround to get arm::sim to work on negbin models
@@ -107,32 +101,22 @@ sample_yhat.lm <- function(space_coord, time_coord, fit, data, n_samples) {
   }
   sim_data <- apply(sim_coeffs, 1, predict_from_coeff, fit = fit, data = data)
   sim_data <- as.data.frame(sim_data)
-  colnames(sim_data) <- paste0("sample", seq_len(n_samples))
+  colnames(sim_data) <- paste0(".sample", seq_len(n_samples))
 
-  sc_name <- gridcoord::gc_get_name(space_coord)
-  tc_name <- gridcoord::gc_get_name(time_coord)
-  all_data <- cbind(data[[sc_name]],
-                    data[[tc_name]],
-                    sim_data,
-                    stringsAsFactors = FALSE)
-  colnames(all_data) <- c(sc_name, tc_name, colnames(sim_data))
-  return(all_data)
+  data <- cbind(data, sim_data)
+  return(data)
 }
 
 
 #' @export
-extract_yhat.inla <- function(space_coord, time_coord, fit, data, ...) {
+extract_yhat.inla <- function(fit, data) {
   if (!requireNamespace("INLA", quietly = TRUE)) {
     stop("The 'INLA' package is required to use inla models in statsurv; ",
          "please install it before continuing")
   }
   # Depending on how INLA is set up, we can get lots of different values back
   # I'm always going to be using the linear predictor.
-  sc_name <- gridcoord::gc_get_name(space_coord)
-  tc_name <- gridcoord::gc_get_name(time_coord)
-
   inla_link <- get_inla_link(fit)
-
 
   if (is.null(fit$marginals.linear.predictor)) {
     stop("Unable to extract fitted values from this inla-object. ",
@@ -150,23 +134,18 @@ extract_yhat.inla <- function(space_coord, time_coord, fit, data, ...) {
   if (!is.null(fit$.args$E)) {
     fitted_values <- fitted_values * fit$.args$E
   }
-  yhat <- data.frame(v1 = data[[sc_name]],
-                     v2 = data[[tc_name]],
-                     v3 = fitted_values,
-                     stringsAsFactors = FALSE)
-  colnames(yhat) <- c(sc_name, tc_name, "yhat")
-  return(yhat)
-
+  data$.fitted <- stats::predict(fit, newdata = data, type = "response")
+  return(data)
 }
 
 #' @export
-sample_yhat.inla <- function(space_coord, time_coord, fit, data, n_samples = 10) {
+sample_yhat.inla <- function(fit, data, n_samples) {
   smpl <- INLA::inla.posterior.sample(n = n_samples,
                                       result = fit,
                                       selection = list("Predictor" = 0))
   samples <- list_transpose(smpl)
   latent <- do.call(cbind, samples$latent)
-  colnames(latent) <- paste0("sample", seq_len(ncol(latent)))
+  colnames(latent) <- paste0(".sample", seq_len(ncol(latent)))
 
 
   inla_link <- get_inla_link(fit)
@@ -181,13 +160,8 @@ sample_yhat.inla <- function(space_coord, time_coord, fit, data, n_samples = 10)
   sim_data <- as.data.frame(sim_data)
   rownames(sim_data) <- NULL
 
-  sc_name <- gridcoord::gc_get_name(space_coord)
-  tc_name <- gridcoord::gc_get_name(time_coord)
-  all_data <- cbind(data[[sc_name]],
-                    data[[tc_name]],
-                    sim_data,
-                    stringsAsFactors = FALSE)
-  colnames(all_data) <- c(sc_name, tc_name, colnames(sim_data))
+  data <- cbind(data, sim_data)
+
 
   if (any(is.na(fit$summary.fitted.values$mode))) {
     warning("<NA> values present in summary.fitted.values. ",
@@ -198,12 +172,12 @@ sample_yhat.inla <- function(space_coord, time_coord, fit, data, n_samples = 10)
             "Impossible to know if sampled values are accurate. ",
             "Use  option 'control.predictor=list(compute = TRUE) to avoid this warning.")
   }
-  return(all_data)
+  return(data)
 }
 
 
 #' @export
-extract_yhat.Arima <- function(space_coord, time_coord, fit, data, ...) {
+extract_yhat.Arima <- function(fit, data, ...) {
   if (!requireNamespace("forecast", quietly = TRUE)) {
     stop("The 'forecast' package is required to use ARIMA models in statsurv; ",
          "please install it before continuing. ",
@@ -269,17 +243,12 @@ extract_yhat.Arima <- function(space_coord, time_coord, fit, data, ...) {
 #' extract_yhat(sf_coord, year_coord, fit_Arima, santa_fe,
 #'              xreg, n_ahead = 2)
 #' }
-extract_yhat.forecast_ARIMA <- function(space_coord, time_coord, fit, data, xreg, n_ahead, ...) {
+extract_yhat.forecast_ARIMA <- function(fit, data, xreg) {
   if (!requireNamespace("forecast", quietly = TRUE)) {
     stop("The 'forecast' package is required to use ARIMA models in statsurv; ",
       "please install it before continuing")
   }
-  if (is_multiariate(space_coord, data)) {
-    stop("Currently, only uni-ariate ARIMA models can be used in statsurv. ",
-         "If using 'loop_model', set 'model_arity = \"uni\"")
-  }
-  space_label <- names(space_coord)[[1]]
-  time_label <- names(time_coord)[[1]]
+  n_ahead <- nrow(data) - length(fit$fitted)
   if (missing(xreg)) {
    new_predictions <- as.numeric(
      forecast::forecast(fit, h = n_ahead)$mean
@@ -287,16 +256,14 @@ extract_yhat.forecast_ARIMA <- function(space_coord, time_coord, fit, data, xreg
   } else {
     rows_to_use <- seq(nrow(xreg) - n_ahead + 1, nrow(xreg))
     new_xreg <- xreg[rows_to_use, , drop = FALSE]
-    new_predictions <- as.numeric(forecast::forecast(fit, h = n_ahead, xreg = new_xreg)$mean)
+    new_predictions <- as.numeric(
+      forecast::forecast(fit, h = n_ahead, xreg = new_xreg)$mean
+      )
   }
   old_predictions <- as.numeric(fit$fitted)
   predictions <- c(old_predictions, new_predictions)
-  yhat <- data.frame(v1 = data[[space_label]],
-                     v2 = data[[time_label]],
-                     v3 = predictions,
-                     stringsAsFactors = FALSE)
-  colnames(yhat) <- c(space_label, time_label, "yhat")
-  return(yhat)
+  data$.fitted <- predictions
+  return(data)
 }
 
 sample_yhat.Arima <- function(space_coord, time_coord, fit, data, n_samples = 10) {
@@ -304,13 +271,12 @@ sample_yhat.Arima <- function(space_coord, time_coord, fit, data, n_samples = 10
 }
 
 #' @export
-extract_yhat.merMod <- function(space_coord, time_coord, fit, data, ...) {
+extract_yhat.merMod <- function(fit, data, ...) {
   if (!requireNamespace("lme4", quietly = TRUE)) {
     stop("The 'lme4' package is required to use lmerMod or glmerMod models in statsurv; ",
          "please install it before continuing")
   }
-  sc_name <- gridcoord::gc_get_name(space_coord)
-  tc_name <- gridcoord::gc_get_name(time_coord)
+
   # There is an issue in predict.merMod where the offset is not taken into account on new data
   # when the offset is specified as an option to the glmer function call.
   # https://github.com/lme4/lme4/issues/447
@@ -320,12 +286,8 @@ extract_yhat.merMod <- function(space_coord, time_coord, fit, data, ...) {
          "As a workaround, offsets can be specified as a term in the model formula ",
          "via 'offset(VAR)'")
   }
-  yhat <- data.frame(v1 = data[[sc_name]],
-                     v2 = data[[tc_name]],
-                     v3 = stats::predict(fit, data, type = "response"),
-                     stringsAsFactors = FALSE)
-  colnames(yhat) <- c(sc_name, tc_name, "yhat")
-  return(yhat)
+  data$.fitted <- stats::predict(fit, newdata = data, type = "response")
+  return(data)
 }
 
 
@@ -348,22 +310,22 @@ get_inla_link  <- function(fit) {
   return(inla_link)
 }
 
-validate_yhat <- function(space_coord, time_coord, yhat) {
-  check_type(yhat, "data.frame")
-  required_names <- c(gridcoord::gc_get_name(space_coord),
-                      gridcoord::gc_get_name(time_coord))
-  n_names <- length(required_names)
-  yhat_names <- colnames(yhat)
-  if (!all(required_names %in% yhat_names[1:n_names])) {
-    stop("yhat is not formed correctly. ",
-         "The first columns of the yhat data.frame must be the same as ",
-         "the names of the space and time coordinates")
-  }
-  if (ncol(yhat) <= n_names) {
-    stop("The yhat data.frame must have one or more columns of predicted data")
-  }
-  return(yhat)
-}
+# validate_yhat <- function(space_coord, time_coord, yhat) {
+#   check_type(yhat, "data.frame")
+#   required_names <- c(gridcoord::gc_get_name(space_coord),
+#                       gridcoord::gc_get_name(time_coord))
+#   n_names <- length(required_names)
+#   yhat_names <- colnames(yhat)
+#   if (!all(required_names %in% yhat_names[1:n_names])) {
+#     stop("yhat is not formed correctly. ",
+#          "The first columns of the yhat data.frame must be the same as ",
+#          "the names of the space and time coordinates")
+#   }
+#   if (ncol(yhat) <= n_names) {
+#     stop("The yhat data.frame must have one or more columns of predicted data")
+#   }
+#   return(yhat)
+# }
 
 
 #' @title Average sampled model predictions
@@ -404,14 +366,13 @@ validate_yhat <- function(space_coord, time_coord, yhat) {
 #'                     n_samples = 10)
 #'
 #' collapse_yhat(space_coord, time_coord, yhat)
-collapse_yhat <- function(space_coord, time_coord, yhat) {
-  required_names <- c(gridcoord::gc_get_name(space_coord),
-                      gridcoord::gc_get_name(time_coord))
-  n_names <- length(required_names)
-  yhat_samples <- yhat[, (n_names + 1):ncol(yhat), drop = FALSE]
+collapse_yhat <- function(augmented_data) {
+  wanted_names <- startsWith(colnames(augments_data), ".sample")
+  yhat_samples <- augmented_data[, wanted_names, drop = FALSE]
   collapsed_samples <- rowMeans(yhat_samples)
-  collapsed_yhat <- cbind(yhat[, 1:n_names, drop = FALSE], collapsed_samples)
-  names(collapsed_yhat)[[3]] <- "yhat"
+  names(collapsed_samples) <- ".fitted"
+  collapsed_yhat <- cbind(augmented_data[, !wanted_names, drop = FALSE], collapsed_samples)
+
   return(collapsed_yhat)
 }
 
@@ -438,13 +399,8 @@ parse_yhat_extractor <- function(var) {
       return(sample_yhat)
     }
 
-    if (file.exists(var)) {
-      return(magic_function_loader(var))
-    }
-
   }
   stop("Unable to understand the yhat_extractor_func argument. ",
-       "Allowed character values are NULL, 'extract', 'sample', a custom function, ",
-       "or the path to the file containing a custom function")
+       "Allowed character values are NULL, 'extract', 'sample', or a user-supplied function")
 }
 

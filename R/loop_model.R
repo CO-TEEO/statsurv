@@ -143,16 +143,7 @@ loop_model <- function(spacetime_data,
     return(curr_data)
   }
 
-  skipping_nulls <- function(f) {
-    force(f)
-    function(x, ...) {
-      if (is.null(x)) {
-        return(NULL)
-      } else {
-        return(f(x, ...))
-      }
-    }
-  }
+
 
     make_data_for_model <- skipping_nulls(make_data_for_model)
 
@@ -164,7 +155,6 @@ loop_model <- function(spacetime_data,
   if (!"id_space" %in% colnames(spacetime_data) || !"id_time" %in% colnames(spacetime_data)) {
     stop_subclass("spacetime_data must have numeric columns 'id_space' and 'id_time' identifying the space and time coordinates")
   }
-
   check_type(spacetime_data$id_space, "integer")
   check_type(spacetime_data$id_time, "integer")
 
@@ -211,11 +201,12 @@ loop_model <- function(spacetime_data,
   spacetime_data <-
     spacetime_data %>%
     dplyr::arrange(id_time) %>%
-    dplyr::mutate(curr_data = slider::slide_index(dplyr::cur_data(), id_time,
+    dplyr::mutate(curr_data = slider::slide_index(dplyr::cur_data_all(), id_time,
                                    function(df) df,
                                    .before = before_func,
                                    .after = n_predict,
-                                   .complete = TRUE))
+                                   .complete = TRUE)) %>%
+    dplyr::select(id_space, id_time, curr_data) # Ditch all the other data - is that what we want to do?
 
   if (model_arity == "multi") {
     spacetime_data <- spacetime_data %>%
@@ -271,7 +262,8 @@ loop_model <- function(spacetime_data,
     dplyr::ungroup() %>%
     dplyr::rename(training_data = data_for_model,
                   curr_data = curr_data) %>%
-    dplyr::select(-args_for_model, -.row_id)
+    dplyr::select(-args_for_model, -.row_id) %>%
+    dplyr::mutate(.n_predict = n_predict, .before = curr_data)
   return(spacetime_data)
 }
 

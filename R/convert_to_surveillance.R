@@ -88,91 +88,42 @@
 #'                         n_predict = 1,
 #'                         grow_length = TRUE,
 #'                         return_last_only = TRUE)
-convert_to_surveillance <- function(space_coord, time_coord, list_of_dataframes,
-                                    n_predict = NULL,
-                                    grow_length = FALSE,
-                                    return_last_only = FALSE) {
+calculate_surveillance_residuals <- function(fits_and_data,
+                                             grow_length = FALSE) {
 
   ### Argument Checks ----
-  space_coord <- gridcoord::gc_gridcoord(space_coord)
-  time_coord <- gridcoord::gc_gridcoord(time_coord)
-  check_type(list_of_dataframes, "list")
-  check_type(n_predict, c("NULL", "integer"))
+  check_type(fits_and_data, "data.frame")
   check_scalar_type(grow_length, "logical")
-  check_scalar_type(return_last_only, "logical")
 
-  # Note - this requires that list_of_dataframes be ordered, from oldest to newest.
-  sc_name <- gridcoord::gc_get_name(space_coord)
-  tc_name <- gridcoord::gc_get_name(time_coord)
 
-  n_instances <- length(list_of_dataframes)
-  if (length(n_predict) == 1) {
-    n_predict <- rep(n_predict, n_instances)
-  } else if (length(n_predict) == n_instances) {
-    n_predict <- n_predict #Nothing doing
-  } else if (is.null(n_predict)) {
-  } else {
-    stop("n_predict must either be a scalar or a vector the same length as list_of_dataframes")
+  surveillance_dfs <- fits_and_data %>%
+    dplyr::rowwise() %>%
+    dplyr::filter(!is.null(augmented_data)) %>%
+    dplyr::group_by(id_space) %>%
+    dplyr::arrange(id_time)
+
+  take_last_n <- function(df, n) {
+    df %>%
+      dplyr::group_by(id_space) %>%
+      dplyr::arrange(id_time) %>%
+      dplyr::slice_tail(n = n) %>%
+      dplyr::ungroup()
+  }
+  surveillance_dfs <- surveillance_dfs %>%
+    dplyr::mutate(surveillance_data = purrr::map2(augmented_data, .n_predict, function(x, n) {take_last_n(x, n)})) %>%
+    dplyr::group_by(id_space) %>%
+    dplyr::mutate(surveillance_data = purrr::accumulate(surveillance_data, rbind))
+
+  if (!grow_length) {
+    surveillance_dfs <- surveillance_dfs %>%
+      dplyr::mutate(surveillance_data = purrr::map2(surveillance_data, augmented_data,
+                                      function(x, y) semi_join(x, y, by = c("id_time", "id_space"))))
   }
 
-  surveillance_dfs <- list_of_dataframes
-  first_df <- TRUE
-  for (ind in seq_len(n_instances)) {
-    if (identical(surveillance_dfs[[ind]], NA)) {
-      next
-    }
-    if (first_df) {
-      first_df <- FALSE
-      if (is.null(n_predict)) {
-        next
-      } else {
-        surveillance_dfs[[ind]] <- last_n(time_coord, surveillance_dfs[[ind]], n_predict[[ind]])
-        prev <- surveillance_dfs[[ind]][c(), ]
-      }
-    } else {
-      prev <- surveillance_dfs[[ind - 1]]
-    }
+  surveillance_dfs <- surveillance_dfs %>%
+    dplyr::select(id_time, id_space, surveillance_data)
+  fits_and_data <- dplyr::left_join(fits_and_data, surveillance_dfs, by = c("id_time", "id_space"))
 
-    curr <- surveillance_dfs[[ind]]
-    if (is.null(n_predict)) {
-      most_recent_n <- dplyr::anti_join(curr, prev, by = c(sc_name, tc_name))
-    } else {
-      most_recent_n <- last_n(time_coord, curr, n_predict[[ind]])
-    }
-
-    if (grow_length == FALSE) {
-      # Take the rows that exist in prev and curr, and don't exist in the last_n
-      in_prev_and_curr <- dplyr::semi_join(prev, curr, by = c(sc_name, tc_name)) %>%
-        dplyr::anti_join(most_recent_n, by = c(sc_name, tc_name))
-      surveillance_dfs[[ind]] <- rbind(in_prev_and_curr, most_recent_n)
-    } else {
-      not_in_most_recent_n <- prev %>%
-        dplyr::anti_join(most_recent_n, by = c(sc_name, tc_name))
-      surveillance_dfs[[ind]] <- rbind(not_in_most_recent_n, most_recent_n)
-    }
-
-    # Order by space, then by time.
-    surveillance_dfs[[ind]] <-
-      dplyr::arrange(surveillance_dfs[[ind]],
-                     gridcoord::gc_get_match(surveillance_dfs[[ind]], space_coord),
-                     gridcoord::gc_get_match(surveillance_dfs[[ind]], time_coord))
-  }
-  if (return_last_only == FALSE) {
-    return(surveillance_dfs)
-  } else {
-    return(surveillance_dfs[[ind]])
-  }
-}
-
-last_n <- function(time_coord, df, n) {
-  tc_name <- gridcoord::gc_get_name(time_coord)
-  tc_labels <- gridcoord::gc_get_labels(time_coord)
-
-  time_labels_in_df_inds <- sort(match(unique(df[[tc_name]]), tc_labels), decreasing = TRUE)
-  time_labels_in_df <- tc_labels[time_labels_in_df_inds]
-  last_n_labels <- time_labels_in_df[1:n]
-  m <- df[[tc_name]] %in% last_n_labels
-
-  df[m, , drop = FALSE]
+  return(fits_and_data)
 }
 

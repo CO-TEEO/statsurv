@@ -129,201 +129,90 @@
 #'   extractor functions work.
 #' @export
 #' @md
-loop_extract_yhat <- function(space_coord,
-                              time_coord,
-                              list_of_model_fits,
-                              list_of_model_data,
+loop_extract_yhat <- function(fits_and_data,
                               yhat_extractor_name = "extract",
-                              use_surveillance_residuals = TRUE,
-                              path_to_model = NULL,
-                              use_cache = FALSE,
-                              force = FALSE,
-                              verbose = interactive(),
+                              data_prep_function = NULL,
+                              include_surveillance = TRUE,
+                              grow_surveillance_length = TRUE,
                               n_samples = NULL,
-                              extra_extractor_args = list()) {
+                              ...) {
+
+  extra_args <- list(...)
+
 
   ### Helper Functions ----
 
 
   ### Argument checks ----
-  space_coord <- gridcoord::gc_gridcoord(space_coord)
-  time_coord <- gridcoord::gc_gridcoord(time_coord)
-  space_name <- gridcoord::gc_get_name(space_coord)
-  time_name <- gridcoord::gc_get_name(time_coord)
-  check_type(list_of_model_fits, c("list", "gridlist"))
-  check_type(list_of_model_data, c("list", "gridlist"))
-  check_scalar_type(use_surveillance_residuals, "logical")
+  check_type(fits_and_data, "data.frame")
+  if (!"id_space" %in% colnames(fits_and_data) || !"id_time" %in% colnames(fits_and_data)) {
+    stop_subclass("spacetime_data must have numeric columns 'id_space' and 'id_time' identifying the space and time coordinates")
+  }
+  check_type(fits_and_data$id_space, "integer")
+  check_type(fits_and_data$id_time, "integer")
+  if (!"model_fit" %in% colnames(fits_and_data) || !"curr_data" %in% colnames(fits_and_data)) {
+    stop_subclass("spacetime_data must have columns 'curr_data' and 'model_fit'",
+                  " containing the data used in each fit and the model fit object")
+  }
+
   check_scalar_type(yhat_extractor_name, c("character", "function"))
-  check_type(path_to_model, c("NULL", "character", "function"))
-  if (is.character(path_to_model)) {
-    check_scalar(path_to_model)
-  }
-  # force passed through to the cache
-  check_scalar_type(verbose, "logical")
+  check_scalar_type(include_surveillance, "logical")
+  check_scalar_type(grow_surveillance_length, "logical")
+  check_type(n_samples, c("NULL", "integer"))
 
-
-
-  ### Check if we need to work spatially ----
-  # Will be done if list_of_model_fits & list_of_model_data are already gridlists
-  if (is_type(list_of_model_fits, "gridlist")) {
-    check_type(list_of_model_data, "gridlist")
-    space_coord <- space_coord_split(space_coord)
-    total_space <- nrow(list_of_model_fits)
-  } else {
-    total_space <- 1
-  }
 
   ### Load the extractor function ----
-  if (is.function(yhat_extractor_name)) {
-    name_of_extractor <- fix_up_path(deparse(substitute(yhat_extractor_name)))
-  } else {
-    name_of_extractor <- tools::file_path_sans_ext(basename(yhat_extractor_name))
-  }
   yhat_extractor_func <- parse_yhat_extractor(yhat_extractor_name)
 
-  ### Set up caching ----
-
-  cache_dir <- calc_cache_dir(use_cache,
-                              top_level = "cache_yhat",
-                              ifelse(is.character(path_to_model),
-                                     path_to_model,
-                                     deparse(substitute(path_to_model))),
-                              name_of_extractor)
-  # There shouldn't be any environments captured in the results
-  # but set save_environments = TRUE just to be on the safe side.
-  cached_yhat_func <- suppressWarnings(
-    simplecache::cache_wrap(yhat_extractor_func,
-                            cache_dir = cache_dir,
-                            hash_in_name = FALSE,
-                            save_environments = TRUE)
-    )
-
-  force <- parse_force(force, time_coord)
-
-  ### Create progress bar
-  progress_bar <- dot_progress_functional(total = total_space,
-                                          dot_every = 1,
-                                          number_every = 5,
-                                          title = "Extracting predicted values",
-                                          verbose = verbose)
 
 
-  ### Pad extra arguments to extractor ----
-  n_iter <- length(list_of_model_fits)
-  if (is.character(yhat_extractor_name) && yhat_extractor_name == "sample" &&
-      !"n_samples" %in% names(extra_extractor_args)) {
+  # Run through the data_prep_function:
+  if (!is.null(data_prep_function)) {
+    data_prep_function2 <- skipping_nulls(data_prep_function)
+    fits_and_data <- fits_and_data %>%
+      dplyr::rowwise() %>%
+      dplyr::mutate(args_for_extractor = list(ensure_list(data_prep_function2(curr_data))))
+  } else {
+    fits_and_data <- fits_and_data %>%
+      dplyr::rowwise() %>%
+      dplyr::mutate(args_for_extractor = list(list(curr_data)))
+  }
+
+
+  if (identical(yhat_extractor_name, "sample")) {
     if (is.null(n_samples)) {
       n_samples <- 10
     }
-    extra_extractor_args[["n_samples"]] <- n_samples
-  }
-  list_args <- pad_args(extra_extractor_args,
-                        reference = list_of_model_fits)
-
-  ### Loop over spatial regions ----
-  if (is_type(list_of_model_data, "gridlist")) {
-    return_accum <- list()
-    for (space_ind in seq_len(nrow(list_of_model_data))) {
-      curr_space_coord <- space_coord[[space_ind]]
-      curr_space_name <- gridcoord::gc_get_labels(curr_space_coord)[[1]]
-
-
-      curr_fits <- extract_gcl_row(list_of_model_fits, space_ind)
-      curr_data <- extract_gcl_row(list_of_model_data, space_ind)
-      curr_extra_args <-  extract_gcl_row(list_args, space_ind)
-
-      return_accum[[curr_space_name]] <-
-        loop_extract_yhat_int(curr_space_coord, time_coord,
-                              curr_fits, curr_data,
-                              yhat_extractor_func = cached_yhat_func,
-                              force = force,
-                              use_surveillance_residuals = use_surveillance_residuals,
-                              list_of_extra_args = curr_extra_args,
-                              progress_bar = progress_bar)
-    }
-    # currently organized as just a list of lists
-    res <- gridcoord::gcl_gridlist(return_accum,
-                                   do.call(rbind, space_coord),
-                                   time_coord)
-    return(res)
-  } else {
-    res <- loop_extract_yhat_int(space_coord, time_coord,
-                                 list_of_model_fits, list_of_model_data,
-                                 yhat_extractor_func = cached_yhat_func,
-                                 force = force,
-                                 use_surveillance_residuals = use_surveillance_residuals,
-                                 list_of_extra_args = list_args,
-                                 progress_bar = progress_bar)
-    return(res)
+    extra_args <- c(extra_args, n_samples)
   }
 
+  wanted_row_ids <- fits_and_data %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(.row_id = dplyr::row_number()) %>%
+    dplyr::rowwise() %>%
+    dplyr::filter(!is.null(model_fit)) %>%
+    dplyr::pull(.row_id)
+
+  p <- progressr::progressor(length(wanted_row_ids))
+
+  augmented_data <- fits_and_data$curr_data
+  for (i in wanted_row_ids) {
+    curr_row <- fits_and_data[i, ]
+    augmented_data[[i]] <- rlang::exec(yhat_extractor_func,
+                                       fits_and_data$model_fit[[i]],
+                                       !!!fits_and_data$args_for_extractor[[i]],
+                                       !!!extra_args)
+    p()
+  }
+
+  fits_and_data$augmented_data <- augmented_data
+
+  if (include_surveillance) {
+    fits_and_data <- calculate_surveillance_residuals(fits_and_data, grow_surveillance_length)
+  }
+
+  fits_and_data <- fits_and_data %>%
+    dplyr::select(-args_for_extractor) %>%
+    dplyr::ungroup()
+  return(fits_and_data)
 }
-
-loop_extract_yhat_int <- function(space_coord,
-                                  time_coord,
-                                  list_of_model_fits,
-                                  list_of_model_data,
-                                  yhat_extractor_func,
-                                  force,
-                                  use_surveillance_residuals,
-                                  list_of_extra_args,
-                                  progress_bar) {
-
-
-  ### Validate fits and data ----
-  # Has to be be done after splitting the data spatially
-  validate_model_list(list_of_model_fits, time_coord)
-  validate_model_list(list_of_model_data, time_coord)
-  if (length(list_of_model_fits) != length(list_of_model_data)) {
-    stop_subclass("list_of_model_fits and list_of_model_data must be the same length",
-                  .subclass = "error_bad_arg_value")
-  }
-  if (!identical(names(list_of_model_fits), names(list_of_model_data))) {
-    stop_subclass("The names of list_of_model_fits and list_of_model_data must be identical",
-                  .subclass = "error_bad_arg_value")
-  }
-
-  total_time <- sum(!is_singular_na(list_of_model_fits))
-
-  ### Loop over all the input fits ----
-  n_fits <- length(list_of_model_fits)
-  list_of_yhats <- list()
-
-  for (ind in seq_len(n_fits)) {
-    fit <- list_of_model_fits[[ind]]
-    if (identical(fit, NA)) {
-      next
-    }
-    data <- list_of_model_data[[ind]]
-    curr_name <- names(list_of_model_fits)[[ind]]
-    cache_name <- build_cache_name(curr_name, space_coord)
-    validate_data_for_yhat(space_coord, time_coord, data, curr_name)
-
-    yhat <- do.call.with.dots(yhat_extractor_func,
-                              space_coord,
-                              time_coord,
-                              fit,
-                              data,
-                              list_of_args = list_of_extra_args[[ind]],
-                              .name_prefix = cache_name,
-                              .force = force[[curr_name]])
-
-    yhat <- dplyr::arrange(yhat,
-                           gridcoord::gc_get_match(yhat, space_coord),
-                           gridcoord::gc_get_match(yhat, time_coord)) #Needs work to sort by
-    # Accumulate results, update progress
-    list_of_yhats[[curr_name]] <- yhat
-    progress_bar(step = 1 / total_time)
-  }
-
-  ### Convert to surveillance ----
-  if (use_surveillance_residuals) {
-    list_of_yhats <- convert_to_surveillance(space_coord, time_coord, list_of_yhats)
-  }
-
-  # Pad with NAs
-  padded_yhats <- pad_with_nas(list_of_yhats, coord = time_coord)
-
-  return(padded_yhats)
-}
-

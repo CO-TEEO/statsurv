@@ -338,3 +338,15 @@ build_cache_name <- function(curr_time_label, space_coord)  {
   }
   return(curr_name)
 }
+
+skipping_nulls <- function(f) {
+  force(f)
+  function(x, ...) {
+    if (is.null(x)) {
+      return(NULL)
+    } else {
+      return(f(x, ...))
+    }
+  }
+}
+
