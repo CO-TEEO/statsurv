@@ -350,3 +350,14 @@ skipping_nulls <- function(f) {
   }
 }
 
+find_wanted_rows <- function(spacetime_data, col_to_check, step = 1) {
+  wanted_row_ids <- spacetime_data %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(.row_id = dplyr::row_number()) %>%
+    dplyr::rowwise() %>%
+    dplyr::filter(!is.null({{col_to_check}})) %>%
+    dplyr::group_by(id_space) %>%
+    dplyr::filter((dplyr::row_number() - 1) %% step == 0) %>%
+    dplyr::pull(.row_id)
+  wanted_row_ids
+}

@@ -1,35 +1,50 @@
 
-
-is_multiariate <- function(space_coord, df = NULL) {
-  # df can either be null or a coordinate
-  check_type(df, c("data.frame", "NULL"))
-  if (is.null(df)) {
-    sc_labels <- length(gridcoord::gc_get_labels(space_coord))
-    return(sc_labels > 1)
+collapse_if_exploded <- function(df) {
+  n_space <- length(unique(df$id_space))
+  if (n_space == 1) {
+    return(df)
   }
 
-  sc_name <- gridcoord::gc_get_name(space_coord)
-  arity <- length(unique(df[[sc_name]]))
-  return(arity > 1)
-}
+  # Collapsing these things isn't always straightforward.
+  # But the general idea is
+  # group_by(id_time)
+  # id_space should be the first entry
+  # .n_predict should be ... a list of distinct values, or not a list if we don't have to be
+  # lists of data.frames become larger data.frames,
+  # lists of fits stay as lists of fits
+  # lists of nulls become a list of a single null
 
-# Turn a gridlist into a dataframe.
-collapse_if_exploded <- function(space_coord, time_coord, x) {
-  if (is_type(x, "gridlist")) {
-    x <- gridcoord::gcl_collapse(x,
-                                 collapse_by = "space",
-                                 return_gridlist = TRUE,
-                                 simplify = TRUE) %>%
-      extract_gcl_row(1)
-    x <- lapply(x,
-                function(y) {
-                  if (nrow(y) == 0) {
-                    NA
-                  } else {
-                    y
-                  }
-                })
+  inner_collapse <- function(x) {
+    # Check if all entries all NULL
+    if (all(vapply(x, is.null, logical(1)))) {
+      return(list(NULL))
+    }
 
+    # Check if all entries are data.frames
+    prototype <- x[[1]]
+    if (is.data.frame(prototype)) {
+      return(list(dplyr::bind_rows(x)))
+    }
+
+    # Otherwise just return the objects as a list
+    list(x)
   }
-  return(x)
+
+  uniq_collapse <- function(x) {
+    list(unique(x))
+  }
+
+  collapsed_df <- df %>%
+    dplyr::group_by(id_time) %>%
+    dplyr::summarize(dplyr::across(c(id_space, .n_predict), uniq_collapse),
+                     dplyr::across(c(-id_space, -.n_predict), .fns = inner_collapse))
+
+  unnest_scalars <- function(x) {
+    if (all(vapply(x, function(x) length(x) == 1, logical(1)))) {
+      return(unlist(x))
+    }
+    x
+  }
+  collapsed_df %>%
+    mutate(dplyr::across(c(id_space, .n_predict), unnest_scalars))
 }

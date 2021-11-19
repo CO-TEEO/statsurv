@@ -131,7 +131,7 @@ loop_model <- function(spacetime_data,
 
   ### Helper functions ----
   make_data_for_model <- function(curr_data, curr_time_index, outcome_col, prediction_strategy) {
-    mask <- curr_data$id_time > curr_time_index
+    mask <- curr_data$id_time > (curr_time_index - n_predict)
 
     if (prediction_strategy == "NA") {
       curr_data[mask, outcome_col] <- NA
@@ -179,40 +179,44 @@ loop_model <- function(spacetime_data,
   prediction_strategy <- match.arg(prediction_strategy)
 
 
-
-  ### Deal with arity  ----
-  if (model_arity == "uni") {
-    spacetime_data = spacetime_data %>%
-      dplyr::group_by(id_space)
-  }
-
-
-  # Ok, now our goal is to basically have a data.frame with columns
-  # id_space, id_time, data, fit
-  # Use the slider package to divide the data neatly up into chunks:
-
-  # We have an irregular fitting window, so need a special function to
-  # define the before index
-  before_func <- function(x) {
-    ifelse(x < min_train,
-           -1,
-           pmax(x - max_train + 1, 1))
-  }
-  spacetime_data <-
-    spacetime_data %>%
-    dplyr::arrange(id_time) %>%
-    dplyr::mutate(curr_data = slider::slide_index(dplyr::cur_data_all(), id_time,
-                                   function(df) df,
-                                   .before = before_func,
-                                   .after = n_predict,
-                                   .complete = TRUE)) %>%
-    dplyr::select(id_space, id_time, curr_data) # Ditch all the other data - is that what we want to do?
-
-  if (model_arity == "multi") {
-    spacetime_data <- spacetime_data %>%
-      dplyr::group_by(id_time) %>%
-      dplyr::filter(dplyr::row_number() == 1)
-  }
+  spacetime_data <- window_spacetime(spacetime_data,
+                                     min_train = min_train,
+                                     max_train = max_train,
+                                     n_predict = n_predict,
+                                     model_arity = model_arity)
+  # ### Deal with arity  ----
+  # if (model_arity == "uni") {
+  #   spacetime_data = spacetime_data %>%
+  #     dplyr::group_by(id_space)
+  # }
+  #
+  #
+  # # Ok, now our goal is to basically have a data.frame with columns
+  # # id_space, id_time, data, fit
+  # # Use the slider package to divide the data neatly up into chunks:
+  #
+  # # We have an irregular fitting window, so need a special function to
+  # # define the before index
+  # before_func <- function(x) {
+  #   ifelse(x < min_train,
+  #          -1,
+  #          pmax(x - max_train + 1, 1))
+  # }
+  # spacetime_data <-
+  #   spacetime_data %>%
+  #   dplyr::arrange(id_time) %>%
+  #   dplyr::mutate(curr_data = slider::slide_index(dplyr::cur_data_all(), id_time,
+  #                                  function(df) df,
+  #                                  .before = before_func,
+  #                                  .after = n_predict,
+  #                                  .complete = TRUE)) %>%
+  #   dplyr::select(id_space, id_time, curr_data) # Ditch all the other data - is that what we want to do?
+  #
+  # if (model_arity == "multi") {
+  #   spacetime_data <- spacetime_data %>%
+  #     dplyr::group_by(id_time) %>%
+  #     dplyr::filter(dplyr::row_number() == 1)
+  # }
 
   # Then use the prediction_strategy to come up with a new data to feed into the model:
   spacetime_data <- spacetime_data %>%

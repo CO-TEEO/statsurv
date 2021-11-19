@@ -141,43 +141,24 @@
 #'                                   outcome_col = "count",
 #'                                   alarm_function_name = "parallel_cusum_poisson",
 #'                                   extra_alarm_args = list(scaling = 1.25))
-loop_alarm_function <- function(space_coord,
-                                time_coord,
-                                list_of_yhats,
-                                list_of_model_data,
+loop_alarm_function <- function(fits_and_data,
                                 outcome_col,
                                 alarm_function_name,
+                                run_on_surveillance = TRUE,
+                                grow_surveillance = TRUE,
                                 max_k,
+                                spatial_lookup = NULL,
                                 n_mcsim = 10,
-                                use_cache = FALSE, #Arguments for caching
-                                path_to_model = NULL,
-                                force = FALSE,
-                                verbose = interactive(),
-                                extra_alarm_args = list()) {
+                                ...) {
 
   ### Combine the data spatially, if split ----
-  list_of_yhats <- collapse_if_exploded(space_coord, time_coord, list_of_yhats)
-  list_of_model_data <- collapse_if_exploded(space_coord, time_coord, list_of_model_data)
-  extra_alarm_args <- lapply(extra_alarm_args,
-                            collapse_if_exploded,
-                            space_coord = space_coord,
-                            time_coord = time_coord)
+  fits_and_data <- collapse_if_exploded(fits_and_data)
 
 
   ### Argument checks ----
-  space_coord <- gridcoord::gc_gridcoord(space_coord)
-  time_coord <- gridcoord::gc_gridcoord(time_coord)
-  check_type(list_of_yhats, "list")
-  check_type(list_of_model_data, "list")
   check_scalar_type(outcome_col, "character")
   check_scalar_type(alarm_function_name, "character")
-  check_scalar_type(use_cache, "logical")
-  check_type(path_to_model, c("NULL", "character", "function"))
-  if (is.character(path_to_model)) {
-    check_scalar(path_to_model)
-  }
-  # force passed through to the cache
-  check_scalar_type(verbose, "logical")
+
 
   ### Prep steps for scan-type alarms functions ----
   zones <- NULL
@@ -185,82 +166,57 @@ loop_alarm_function <- function(space_coord,
   alarm_type <- calculate_alarm_type(alarm_function_name)
   if (alarm_type == "scan") {
     check_scalar_type(max_k, "integer")
+    check_type(spatial_lookup, "sf")
     if (max_k < 0) {
       stop("max_k must be greater than 0")
-    } else if (max_k > nrow(space_coord)) {
+    } else if (max_k > nrow(spatial_lookup)) {
       stop("max_k must be less than the number of spatial areas")
     }
 
-    if (!is_type(space_coord, c("Spatial", "sf"))) {
-      stop("In order to use a scan-type alarm function, 'space_coord' must be a ",
-           "spatialPolygonsDataFrame or an sf-type data.frame")
-    }
-    zones <- space_coord_to_zones(space_coord, max_k = max_k)
-    key_matrix <- build_key_matrix(zones)
+    zones <- space_coord_to_zones(spatial_lookup, max_k = max_k)
+    key_matrix <- zones_to_key_matrix(zones)
   }
 
-
-  ### Computation steps: ----
-  ### ~~~1. Step up caching ----
-  cache_dir <- calc_cache_dir(use_cache,
-                              top_level = "cache_alarm",
-                              ifelse(is.character(path_to_model),
-                                     path_to_model,
-                                     deparse(substitute(path_to_model))),
-                              alarm_function_name,
-                              max_k)
-
-
-  cached_standardized_alarm_mc <- suppressWarnings(
-    simplecache::cache_wrap(standardized_alarm_multicol,
-                            cache_dir,
-                            hash_in_name = FALSE,
-                            save_environments = TRUE))
-  force <- parse_force(force, time_coord)
-
-
-  ### ~~~2. Pad extra_alarm_args ----
-  n_iter <- sum(!is_singular_na(list_of_yhats))
-  list_args <- pad_args(extra_alarm_args,
-                        reference = list_of_yhats)
 
   ### ~~~3. Loop through all the model fits ----
-  all_scan_res <- list()
-  progress_bar <- dot_progress_functional(n_iter, 1, 5,
-                                          title = "Calculating scan statistics",
-                                          verbose = verbose)
-  for (ind in seq_along(list_of_model_data)) {
-    ### ~~~4. Calculate scan statistics, collapse yhat columns if necessary ----
-    curr_label <- names(list_of_model_data)[[ind]]
-    tall_counts <- list_of_model_data[[ind]]
-    long_yhat <- list_of_yhats[[ind]]
-    if (identical(long_yhat, NA)) {
-      next
-    }
-    wide_counts <- pivot_for_scan(tall_counts, outcome_col, space_coord, time_coord)
+  # What do we calculate the scan statistics on? Regular or surveillance data?
+  # And do we grow it or not?
 
-    cache_name <- build_cache_name(curr_label, space_coord)
 
-    scan_res <- do.call.with.dots(cached_standardized_alarm_mc,
-                                  space_coord = space_coord,
-                                  time_coord = time_coord,
-                                  alarm_function_name = alarm_function_name,
-                                  wide_cases = wide_counts,
-                                  zone_info = zones,
-                                  long_yhat = long_yhat,
-                                  n_mcsim = n_mcsim,
-                                  # zones = zones,
-                                  # key_matrix = key_matrix,
-                                  list_of_args = list_args[[ind]],
-                                  .name_prefix = cache_name,
-                                  .force = force[[ind]])
-
-    ### ~~~5. Accumulate Results ----
-    all_scan_res[[curr_label]] <- scan_res
-    progress_bar()
+  if (run_on_surveillance && !("surveillance_data" %in% colnames(fits_and_data))) {
+    # Currently this exists in both loop_extract_yhat and loop_alarm_function
+    # I'm not quite sure where it belongs.
+    fits_and_data <- calculate_surveillance_residuals(fits_and_data, grow_surveillance)
   }
 
-  padded_scan_res <- pad_with_nas(all_scan_res, coord = time_coord)
-  return(padded_scan_res) #zones are now included as part of the scan result, if applicable
+
+  if (run_on_surveillance) {
+    wanted_row_ids <- find_wanted_rows(fits_and_data, surveillance_data)
+  } else {
+    wanted_row_ids <- find_wanted_rows(fits_and_data, augmented_data)
+  }
+
+  p <- progressr::progressor(length(wanted_row_ids))
+
+  all_scan_res <- rep(list(NULL), nrow(fits_and_data))
+  for (i in wanted_row_ids) {
+    curr_row <- fits_and_data[i, ]
+    if (run_on_surveillance) {
+      curr_data <- fits_and_data$surveillance_data[[i]]
+    } else {
+      curr_data <- fits_and_data$augmented_data[[i]]
+    }
+
+    all_scan_res[[i]] <- call_alarm_function(alarm_function_name,
+                                             curr_data,
+                                             outcome_col,
+                                             zone_info = zones,
+                                             n_mcsim,
+                                             ...)
+    p()
+  }
+  fits_and_data$scan_results <- all_scan_res
+  return(fits_and_data)
+
 }
 

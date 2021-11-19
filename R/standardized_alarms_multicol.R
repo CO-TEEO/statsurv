@@ -68,26 +68,32 @@
 #'                              wide_cases, zones, tall_baseline, n_mcsim = 10)
 #' standardized_alarm_multicol(space_coord, time_coord, "parallel_cusum_poisson",
 #'                              wide_cases, zones, tall_baseline, n_mcsim = 10)
-standardized_alarm_multicol <- function(space_coord, time_coord, alarm_function_name,
-                                         wide_cases, zone_info, long_yhat,
-                                         ..., n_mcsim) {
+call_alarm_function <- function(alarm_function_name,
+                                spacetime_data, outcome_col,
+                                zone_info, n_mcsim, ...) {
 
   ### Argument Checks ----
-  validate_yhat(space_coord, time_coord, long_yhat)
+  # validate_yhat(space_coord, time_coord, long_yhat)
   # All other args passed through to standardized_alarm_functions
+  wide_cases <- pivot_for_scan(spacetime_data, outcome_col)
 
+  cn <- colnames(spacetime_data)
+  baseline_columns <- which(startsWith(cn, ".fitted") | startsWith(cn, ".sample"))
   alarm_accumulator <- list()
-  for (ind in seq(3, ncol(long_yhat), by = 1)) {
-    wide_yhat <- pivot_for_scan(long_yhat,
-                                names(long_yhat)[[ind]],
-                                space_coord,
-                                time_coord)
+  ii <- 0
+  for (ind in baseline_columns) {
+    wide_baseline <- pivot_for_scan(spacetime_data,
+                                    cn[[ind]])
 
-    alarm_res <- standardized_alarm_functions(alarm_function_name, wide_cases, zone_info, wide_yhat,
+    alarm_res <- standardized_alarm_functions(alarm_function_name, wide_cases, zone_info, wide_baseline,
                                               n_mcsim = n_mcsim, ...)
-    alarm_accumulator[[ind - 2]] <- alarm_res
+    ii <- ii + 1
+    alarm_accumulator[[ii]] <- alarm_res
   }
   alarm_output <- collapse_alarm_functions(alarm_accumulator, alarm_function_name)
 
+  if (calculate_alarm_type(alarm_function_name) == "parallel") {
+    alarm_output <- unpivot_parallel_alarms(alarm_output, spacetime_data, ".action_level")
+  }
   return(alarm_output)
 }

@@ -54,7 +54,6 @@
 #'   outbreak. This column is identical to `score` for all scan-type alarm functions except for
 #'   \code{\link[scanstatistics]{scan_bayes_negbin}}, where it is equal to `log_posterior`}
 #'   }
-#' @export
 #' @md
 #' @examples
 #' # Apply scan_cusum_poisson to a 3x3 spatial grid with 4 time points

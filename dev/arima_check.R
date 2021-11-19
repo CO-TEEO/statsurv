@@ -18,7 +18,7 @@ data_prep_arima <- function(data_for_model) {
     #     y <- y + runif(length(y), min = 0, max = 2e-5)
     #     df$percent_elevated <- y
     # }
-    return(list(data = df, xreg = external_regressor_matrix))
+    return(list(df = df, xreg = external_regressor_matrix))
 }
 
 model_arima <- function(df, xreg) {
@@ -71,4 +71,4 @@ data_prep_arima2 <- function(data_for_model) {
 
 
 arima_res2 <- loop_extract_yhat(arima_res, data_prep_arima2, yhat_extractor_name = "extract",
-                  use_surveillance_residuals = FALSE)
+                                include_surveillance = FALSE)

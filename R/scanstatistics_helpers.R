@@ -34,7 +34,7 @@ NULL
 
 #' @export
 #' @rdname switch_zone_rep
-build_key_matrix <- function(zones) {
+zones_to_key_matrix <- function(zones) {
   n_zones <- length(zones)
   n_locations <- max(unlist(zones))
   key_matrix <- matrix(rep(0, n_zones * n_locations), ncol = n_zones)
@@ -47,7 +47,7 @@ build_key_matrix <- function(zones) {
 
 #' @export
 #' @rdname switch_zone_rep
-build_zones <- function(key_matrix) {
+key_matrix_to_zones <- function(key_matrix) {
   # Builds a list of zones from a key_matrix
   zones <- apply(key_matrix, 1, function(x) {which(x == 1)})
   return(zones)
@@ -153,47 +153,28 @@ space_coord_to_zones <- function(space_coord, max_k) {
 #'                          stringsAsFactors = FALSE)
 #' pivot_for_scan(df, "vals", "space", time_coord)
 
-pivot_for_scan <- function(df, value_col, column_coord, row_coord) {
-  check_type(df, "data.frame")
-  check_scalar_type(value_col, "character")
-
-
-  if (is.character(column_coord)) {
-    colnames_col <- column_coord
-    column_ordering <- sort(unique(df[[colnames_col]]))
-  } else {
-    colnames_col <- gridcoord::gc_get_name(column_coord)
-    column_ordering <- gridcoord::gc_get_labels(column_coord)
-    column_ordering <- column_ordering[column_ordering %in% df[[colnames_col]]]
-  }
-  if (is.numeric(column_ordering)) {
-    column_ordering <- as.character(column_ordering)
-  }
-
-  if (is.character(row_coord)) {
-    rownames_col <- row_coord
-    row_ordering <- sort(unique(df[[rownames_col]]))
-  } else {
-    rownames_col <- gridcoord::gc_get_name(row_coord)
-    row_ordering <- gridcoord::gc_get_labels(row_coord)
-  }
-
-
-  x <- df %>%
-    dplyr::select(colnames_col, value_col, rownames_col) %>%
-    tidyr::pivot_wider(names_from = colnames_col, values_from = value_col) %>%
-    dplyr::arrange(match(.data[[rownames_col]], row_ordering)) %>%
+pivot_for_scan <- function(spacetime_data, value_col) {
+  #TODO(): Should I allow spacetime data to be an sf?
+  x <- spacetime_data[, c("id_space", "id_time", value_col)] %>%
+    dplyr::arrange(id_time, id_space) %>%
+    tidyr::pivot_wider(id_cols = id_time,
+                       names_from = id_space,
+                       values_from = dplyr::all_of(value_col)) %>%
+    dplyr::arrange(id_time) %>%
     as.data.frame()
-  rownames(x) <- x[, rownames_col, drop = TRUE]
-  x[, rownames_col] <- NULL
-  x <- x %>%
-    dplyr::select(column_ordering)
-  if (!identical(colnames(x), column_ordering)) {
-    stop("Error in assigning column names - the order in the wide data frame is somehow incorrect")
-  }
+  rownames(x) <- x$id_time
+  x$id_time <- NULL
   return(as.matrix(x))
 }
 
+unpivot_parallel_alarms <- function(alarm_data, spacetime_data, value_col = ".action_level") {
+  new_data <- as.data.frame(alarm_data) %>%
+    magrittr::set_colnames(seq_len(ncol(alarm_data))) %>%
+    dplyr::mutate(id_time = seq_len(nrow(alarm_data))) %>%
+    tidyr::pivot_longer(-id_time, names_to = "id_space", values_to = value_col,
+                        names_transform = list("id_space" = as.integer))
+  return(dplyr::left_join(spacetime_data, new_data, by = c("id_space", "id_time")))
+}
 
 
 #' @title Ensure that zone information is repesented as a list

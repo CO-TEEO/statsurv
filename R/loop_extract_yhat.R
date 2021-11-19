@@ -178,7 +178,6 @@ loop_extract_yhat <- function(fits_and_data,
       dplyr::mutate(args_for_extractor = list(list(curr_data)))
   }
 
-
   if (identical(yhat_extractor_name, "sample")) {
     if (is.null(n_samples)) {
       n_samples <- 10

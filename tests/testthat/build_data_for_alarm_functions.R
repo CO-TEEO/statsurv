@@ -9,8 +9,13 @@ geo <- matrix(c(x_coord, y_coord), ncol = 2, byrow = FALSE)
 zones_sm <- geo %>%
   scanstatistics::coords_to_knn(k = 1) %>%
   scanstatistics::knn_zones()
-key_matrix_sm <- build_key_matrix(zones_sm)
+key_matrix_sm <- zones_to_key_matrix(zones_sm)
 
+spacetime_data_sm <-
+  data.frame(id_space = c(1, 2, 1, 2),
+             id_time = c(1, 2),
+             cases = c(2, 2, 3, 5),
+             .fitted = 2)
 wide_cases_sm <- matrix(data = c(2, 2, 3, 5), nrow = 2, byrow = TRUE)
 wide_baseline_sm <- matrix(2, nrow = 2, ncol = 2)
 outbreak_sp_sm <- c(2)
@@ -24,8 +29,14 @@ geo <- matrix(c(x_coord, y_coord), ncol = 2, byrow = FALSE)
 zones_lg <- geo %>%
   scanstatistics::coords_to_knn(k = 4) %>%
   scanstatistics::knn_zones()
-key_matrix_lg <- build_key_matrix(zones_lg)
+key_matrix_lg <- zones_to_key_matrix(zones_lg)
 
+spacetime_data_lg <- data.frame(id_space = rep(1:9, 4),
+                                id_time = rep(1:4, each = 9)) %>%
+  dplyr::mutate(cases = dplyr::case_when(id_space %in% c(1, 2, 4, 5) & id_time %in% c(3,4) ~ 5,
+                                         id_space %in% c(8,9) & id_time %in% c(3, 4) ~ 3,
+                                         TRUE ~ 2),
+                .fitted = 2)
 outbreak_sp_lg <- c(1, 2, 4, 5)
 outbreak_tm_lg <- c(3, 4)
 wide_cases_lg <- matrix(2, nrow = 4, ncol = 9)

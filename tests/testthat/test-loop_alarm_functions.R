@@ -1,9 +1,8 @@
 set.seed(232892630)
 
-space_coord <- rgdal::readOGR("three_zips/three_zips.shp",
-                              verbose = FALSE,
-                              stringsAsFactors = FALSE) %>%
-  gridcoord::gc_gridcoord()
+space_coord <- sf::st_read("tests/testthat/three_zips/three_zips.shp",
+                           quiet = TRUE) %>%
+  dplyr::mutate(id_space = dplyr::row_number(), .before = dplyr::everything())
 
 start_times <- 1:12
 fin_times <- start_times + 1L
@@ -11,28 +10,36 @@ labels <- paste0("X", start_times) #sapply(start_times + 64, intToUtf8)
 time_coord <- data.frame(time_labels = labels,
                          time = start_times,
                          fin_time = fin_times,
-                         stringsAsFactors = FALSE) %>%
-  gridcoord::gc_gridcoord()
+                         stringsAsFactors = FALSE)
 
-data_for_scan <- gridcoord::gc_expand(time_coord, space_coord)
+data_for_scan <- tidyr::crossing(sf::st_drop_geometry(space_coord), time_coord) %>%
+  dplyr::transmute(id_space,
+            id_time = as.numeric(stringr::str_sub(time_labels, 2)),
+            zcta_str,
+            time) %>%
+  dplyr::arrange(id_space, id_time)
+
 data_for_scan$baseline <- 4.3
-data_for_scan$baseline2 <- 6
+data_for_scan$.sample1 <- 4.3
+data_for_scan$.sample2 <- 6
 # is_outbreak <- #space2 and space3, 10-13
 is_outbreak <- data_for_scan$zcta_str %in% c("80401", "80203") & data_for_scan$time >= 9
 data_for_scan$observed <- floor(data_for_scan$baseline + ifelse(is_outbreak, 4, 0))
-null_f <- function(space_coord, time_coord, data_for_model) {
-  return(list(fit = 0, data = data_for_model))
-}
-all_ret <- loop_model(space_coord, time_coord, data_for_scan, "observed", null_f, use_cache = FALSE)
-all_data_for_scan <- all_ret[[2]]
-all_yhats <- lapply(all_data_for_scan,
-                    function(x) {
-                      if (identical(x, NA)) {
-                        x
-                       } else {
-                          x[, c("time_labels", "zcta_str", "baseline", "baseline2")]
-                        }
-                      })
+
+windowed_for_scan <- window_spacetime(data_for_scan, 7, Inf, 1, "multi")
+windowed_for_scan$augmented_data <- windowed_for_scan$curr_data
+loop_alarm_function(windowed_for_scan, "observed", "scan_eb_poisson",
+                    run_on_surveillance = FALSE, max_k = 1, spatial_lookup = space_coord)
+# all_ret <- loop_model(data_for_scan, outcome_col = "observed", model_function = null_f, min_train = 7,n_predict = 1)
+#
+# all_yhats <- lapply(all_data_for_scan,
+#                     function(x) {
+#                       if (identical(x, NA)) {
+#                         x
+#                        } else {
+#                           x[, c("time_labels", "zcta_str", "baseline", "baseline2")]
+#                         }
+#                       })
 
 calculate_ebp_scores <- function(n_z, mu_z) {
   ebp_poisson_score <- n_z * log(n_z / mu_z) + mu_z - n_z
@@ -41,41 +48,47 @@ calculate_ebp_scores <- function(n_z, mu_z) {
 }
 
 test_that("loop_alarm_function runs", {
-  expect_error(loop_alarm_function(space_coord, time_coord, all_yhats, all_data_for_scan, "observed",
-                                   "scan_eb_poisson", max_k = 1, use_cache = FALSE),
+  expect_error(loop_alarm_function(windowed_for_scan, "observed", "scan_eb_poisson",
+                                   run_on_surveillance = FALSE, max_k = 1,
+                                   spatial_lookup = space_coord),
                NA)
 })
 
 # We can at least check the scores
 test_that("loop_alarm_function works?", {
-  all_res <- loop_alarm_function(space_coord, time_coord, all_yhats, all_data_for_scan, "observed",
-                                  "scan_eb_poisson", path_to_model = "test_path", max_k = 1,
-                                 use_cache = FALSE, verbose = FALSE)
-  all_scan <- all_res
-  sorted_output <- all_scan$X11$observed %>%
+  all_res <- loop_alarm_function(windowed_for_scan, "observed", "scan_eb_poisson",
+                                 run_on_surveillance = FALSE, max_k = 1,
+                                 spatial_lookup = space_coord)
+  all_scan <- all_res$scan_results
+  sorted_output <- all_scan[[11]]$observed %>%
     dplyr::arrange(zone, duration)
   output_to_check <- sorted_output[sorted_output$duration == 1, ]
-  input_data <- all_data_for_scan$X11[all_data_for_scan$X11$time_labels == "X11", ]
-  expected_scores1 <- calculate_ebp_scores(input_data$observed, input_data$baseline)
-  expected_scores2 <- calculate_ebp_scores(input_data$observed, input_data$baseline2)
+  input_data <- data_for_scan %>%
+    dplyr::filter(id_time == 11)
+  expected_scores1 <- calculate_ebp_scores(input_data$observed, input_data$.sample1)
+  expected_scores2 <- calculate_ebp_scores(input_data$observed, input_data$.sample2)
   expected_scores_avg <- 0.5 * (expected_scores1 + expected_scores2)
   expect_equal(output_to_check$action_level, expected_scores_avg)
 })
 
 test_that("loop_alarm_function is consistent", {
   ### scan_eb_poisson
-  all_res <- loop_alarm_function(space_coord, time_coord, all_yhats, all_data_for_scan, "observed",
-                                 "scan_eb_poisson", path_to_model = "test_path", max_k = 3,
-                                 use_cache = FALSE, verbose = FALSE)
+  all_res <- loop_alarm_function(windowed_for_scan, "observed",
+                                 "scan_eb_poisson",
+                                 spatial_lookup = space_coord,
+                                 run_on_surveillance = FALSE, max_k = 3)
   expect_known_value(all_res, "scanstat/scan_eb_poisson.RDS")
 
   ### scan_pb_poisson
-  all_res <- loop_alarm_function(space_coord, time_coord, all_yhats, all_data_for_scan, "observed",
-                                 "scan_pb_poisson", path_to_model = "test_path", max_k = 3,
-                                 use_cache = FALSE, verbose = FALSE)
+  all_res <- loop_alarm_function(windowed_for_scan, "observed",
+                                 "scan_pb_poisson",
+                                 spatial_lookup = space_coord,
+                                 run_on_surveillance = FALSE, max_k = 3)
   expect_known_value(all_res, "scanstat/scan_pb_poisson.RDS")
 
+
   ### scan_eb_negbin
+  # I was really hoping to avoid argument dispatch,
   thetas <- list(0.1, 0.5, 1, 5, 10)
   names(thetas) <- names(all_yhats)[!is.na(all_yhats)]
   all_res <- loop_alarm_function(space_coord, time_coord, all_yhats, all_data_for_scan, "observed",
