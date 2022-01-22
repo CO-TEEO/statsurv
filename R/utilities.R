@@ -350,6 +350,16 @@ skipping_nulls <- function(f) {
   }
 }
 
+
+
+ensure_list <- function(x) {
+  if (is.data.frame(x) || !is.list(x) ) {
+    return(list(x))
+  } else {
+    return(x)
+  }
+}
+
 find_wanted_rows <- function(spacetime_data, col_to_check, step = 1) {
   wanted_row_ids <- spacetime_data %>%
     dplyr::ungroup() %>%
