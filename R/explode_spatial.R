@@ -36,8 +36,9 @@ collapse_if_exploded <- function(df) {
 
   collapsed_df <- df %>%
     dplyr::group_by(id_time) %>%
-    dplyr::summarize(dplyr::across(c(id_space, .n_predict), uniq_collapse),
-                     dplyr::across(c(-id_space, -.n_predict), .fns = inner_collapse))
+    dplyr::summarize(dplyr::across(.fns = inner_collapse))
+    # dplyr::summarize(dplyr::across(c(id_space, .n_predict), uniq_collapse),
+    #                  dplyr::across(c(-id_space, -.n_predict), .fns = inner_collapse))
 
   unnest_scalars <- function(x) {
     if (all(vapply(x, function(x) length(x) == 1, logical(1)))) {
@@ -46,5 +47,6 @@ collapse_if_exploded <- function(df) {
     x
   }
   collapsed_df %>%
-    mutate(dplyr::across(c(id_space, .n_predict), unnest_scalars))
+    dplyr::mutate(dplyr::across(.fns = unnest_scalars))
+    # mutate(dplyr::across(c(id_space, .n_predict), unnest_scalars))
 }

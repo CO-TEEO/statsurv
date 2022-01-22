@@ -30,6 +30,11 @@ window_spacetime <- function(spacetime_data, min_train, max_train, n_predict, mo
                                                   .complete = TRUE)) %>%
     dplyr::select(id_space, id_time, curr_data) # Ditch all the other data - is that what we want to do?
 
+
+  spacetime_data <- spacetime_data %>%
+    rowwise() %>%
+    filter(!is.null(curr_data)) %>%
+    ungroup()
   if (model_arity == "multi") {
     spacetime_data <- spacetime_data %>%
       dplyr::group_by(id_time) %>%

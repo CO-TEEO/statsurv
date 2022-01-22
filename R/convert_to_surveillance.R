@@ -88,42 +88,50 @@
 #'                         n_predict = 1,
 #'                         grow_length = TRUE,
 #'                         return_last_only = TRUE)
-calculate_surveillance_residuals <- function(fits_and_data,
+calculate_surveillance_residuals <- function(aug_datas,
+                                             time_ids,
+                                             n_predict,
                                              grow_length = FALSE) {
 
   ### Argument Checks ----
-  check_type(fits_and_data, "data.frame")
-  check_scalar_type(grow_length, "logical")
+  # aug_data is a list of dataframes
+  # check_type(aug_datas, "data.frame")
+  # check_scalar_type(grow_length, "logical")
 
 
-  surveillance_dfs <- fits_and_data %>%
-    dplyr::rowwise() %>%
-    dplyr::filter(!is.null(augmented_data)) %>%
-    dplyr::group_by(id_space) %>%
-    dplyr::arrange(id_time)
-
-  take_last_n <- function(df, n) {
+  #
+  slice_time <- function(df, curr_time_id, n_predict) {
     df %>%
-      dplyr::group_by(id_space) %>%
-      dplyr::arrange(id_time) %>%
-      dplyr::slice_tail(n = n) %>%
-      dplyr::ungroup()
+      filter(id_time > (curr_time_id - n_predict))
   }
-  surveillance_dfs <- surveillance_dfs %>%
-    dplyr::mutate(surveillance_data = purrr::map2(augmented_data, .n_predict, function(x, n) {take_last_n(x, n)})) %>%
-    dplyr::group_by(id_space) %>%
-    dplyr::mutate(surveillance_data = purrr::accumulate(surveillance_data, rbind))
+  surveillance_datas <- map2(aug_datas, time_ids, slice_time, n_predict = n_predict)
+  # surveillance_dfs <- fits_and_data %>%
+  #   dplyr::rowwise() %>%
+  #   dplyr::filter(!is.null(augmented_data)) %>%
+  #   dplyr::group_by(id_space) %>%
+  #   dplyr::arrange(id_time)
+  #
+  # take_last_n <- function(df, n) {
+  #   df %>%
+  #     dplyr::group_by(id_space) %>%
+  #     dplyr::arrange(id_time) %>%
+  #     dplyr::slice_tail(n = n) %>%
+  #     dplyr::ungroup()
+  # }
+  surveillance_datas <- surveillance_datas %>%
+    purrr::accumulate(., rbind)
+    # dplyr::group_by(id_space) %>%
+    # dplyr::mutate(surveillance_data = purrr::accumulate(surveillance_data, rbind))
 
   if (!grow_length) {
-    surveillance_dfs <- surveillance_dfs %>%
-      dplyr::mutate(surveillance_data = purrr::map2(surveillance_data, augmented_data,
-                                      function(x, y) semi_join(x, y, by = c("id_time", "id_space"))))
+    surveillance_dats <- purrr::map2(surveillance_datas, aug_datas,
+                                     function(x, y) semi_join(x, y, by = c("id_time", "id_space")))
+    # surveillance_dfs <- surveillance_dfs %>%
+    #   dplyr::mutate(surveillance_data = purrr::map2(surveillance_data, augmented_data,
+    #                                   function(x, y) semi_join(x, y, by = c("id_time", "id_space"))))
   }
 
-  surveillance_dfs <- surveillance_dfs %>%
-    dplyr::select(id_time, id_space, surveillance_data)
-  fits_and_data <- dplyr::left_join(fits_and_data, surveillance_dfs, by = c("id_time", "id_space"))
 
-  return(fits_and_data)
+  return(surveillance_datas)
 }
 

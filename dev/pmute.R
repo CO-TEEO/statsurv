@@ -1,6 +1,6 @@
 pmute <- function(.data, ...) {
   grouping_variables <- groups(.data)
-  .data <- dplyr::rowwise(.data, !!!grouping_variables)
+  .data <- dplyr::rowwise(ungroup(.data), !!!grouping_variables)
   nr <- nrow(.data)
 
   # Do some mucking around with the ... arguments to make sure that they each argument returns a
