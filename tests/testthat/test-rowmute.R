@@ -81,6 +81,7 @@ test_that("rowmute works with user-defined functions", {
   v2 <- nested_df %>%
     rowmute(z = f(group, even))
 })
+
 test_that("rowmute works on record-style objects", {
   new_rational <- function(n = integer(), d = integer()) {
     vctrs::vec_assert(n, ptype = integer())
