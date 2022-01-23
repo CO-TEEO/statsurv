@@ -5,22 +5,32 @@
 \title{Apply an alarm function to the output of \code{loop_model} and \code{loop_extract_yhat}}
 \usage{
 loop_alarm_function(
-  space_coord,
-  time_coord,
-  list_of_yhats,
-  list_of_model_data,
+  fits_and_data,
   outcome_col,
   alarm_function_name,
+  run_on_surveillance = TRUE,
+  grow_surveillance = TRUE,
   max_k,
+  spatial_lookup = NULL,
   n_mcsim = 10,
-  use_cache = FALSE,
-  path_to_model = NULL,
-  force = FALSE,
-  verbose = interactive(),
-  extra_alarm_args = list()
+  ...
 )
 }
 \arguments{
+\item{outcome_col}{The name of the column in the data.frames in \code{list_of_model_data}
+containing the primary outcome (e.g., the number of elevated cases).}
+
+\item{alarm_function_name}{The name of the alarm function to call. See the list of supported
+alarm functions below.}
+
+\item{max_k}{The maximum number of locations to be included in any one zone when constructing
+spatial zones for scan-type alarm functions,}
+
+\item{n_mcsim}{A non-negative integer; the number of replicate scan
+statistics to generate in order to calculate a \eqn{P}-value.}
+
+\item{...}{Additional parameters to pass to the specified alarm function.}
+
 \item{space_coord}{A gridcoord object
 (\code{\link[gridcoord]{gc_gridcoord}}) describing the spatial area that is
 covered by \code{list_of_yhats} and \code{list_of_model_data}}
@@ -42,34 +52,12 @@ corresponding to \code{space_coord}, \code{time_coord}, and a column containing 
 interest. These entries must either be in a single list organized by time, or a
 \link[gridcoord]{gridlist} organized by both space and time.}
 
-\item{outcome_col}{The name of the column in the data.frames in \code{list_of_model_data}
-containing the primary outcome (e.g., the number of elevated cases).}
-
-\item{alarm_function_name}{The name of the alarm function to call. See the list of supported
-alarm functions below.}
-
-\item{max_k}{The maximum number of locations to be included in any one zone when constructing
-spatial zones for scan-type alarm functions,}
-
-\item{n_mcsim}{A non-negative integer; the number of replicate scan
-statistics to generate in order to calculate a \eqn{P}-value.}
+\item{extra_alarm_args}{A named list containing additional parameters to supply to the
+alarm function. Consult the documentation for the individual alarm functions for details.}
 
 \item{use_cache}{Should the results from this function be saved (cached), so that the results can
 be quickly loaded without having to re-run the calculation? Likely only to save time when
 applying a scan-type alarm function and both \code{max_k} and \code{n_mcsim} are large.}
-
-\item{path_to_model}{The path to the model function, or the function itself, that was  used to
-calculate the model fits in \code{\link{loop_model}}. This parameter is used only to
-determine where cached results should be saved, if caching is being used.}
-
-\item{force}{If previous results have been cached, should the function be forced to redo the
-calculations? \code{force} can be a single logical value or a vector indicating specific time
-points to be re-calculated.}
-
-\item{verbose}{Should updates be printed to the console?}
-
-\item{extra_alarm_args}{A named list containing additional parameters to supply to the
-alarm function. Consult the documentation for the individual alarm functions for details.}
 }
 \value{
 A list organized by time, where each entry is the result from the individual alarm

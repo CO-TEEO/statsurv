@@ -5,21 +5,22 @@
 \title{Predict Values From a Series of Model Fits}
 \usage{
 loop_extract_yhat(
-  space_coord,
-  time_coord,
-  list_of_model_fits,
-  list_of_model_data,
+  fits_and_data,
   yhat_extractor_name = "extract",
-  use_surveillance_residuals = TRUE,
-  path_to_model = NULL,
-  use_cache = FALSE,
-  force = FALSE,
-  verbose = interactive(),
+  data_prep_function = NULL,
+  include_surveillance = TRUE,
+  grow_surveillance_length = TRUE,
   n_samples = NULL,
-  extra_extractor_args = list()
+  ...
 )
 }
 \arguments{
+\item{yhat_extractor_name}{How should predicted values be extracted from the model fits. Valid
+values are "extract" (the default), "sample", or a user-supplied custom function. See section
+"Extrator Functions" for more details.}
+
+\item{n_samples}{If \code{yhat_extractor_name = 'sample'}, how many samples should be taken?}
+
 \item{space_coord}{A gridcoord object
 (\code{\link[gridcoord]{gc_gridcoord}}) describing the spatial area that is
 covered by \code{list_of_model_fits} and \code{list_of_model_data}.}
@@ -40,10 +41,6 @@ corresponding to \code{space_coord}, \code{time_coord}, and a column containing 
 interest. These entries must either be in a single list organized by time, or a
 \link[gridcoord]{gridlist} organized by both space and time.}
 
-\item{yhat_extractor_name}{How should predicted values be extracted from the model fits. Valid
-values are "extract" (the default), "sample", or a user-supplied custom function. See section
-"Extrator Functions" for more details.}
-
 \item{use_surveillance_residuals}{Should the function return surveillance predicted values
 (\code{TRUE}) or ordinary predicted values (\code{FALSE})}
 
@@ -60,8 +57,6 @@ calculations? \code{force} can be a single logical value or a vector indicating 
 points to be re-calculated.}
 
 \item{verbose}{Should updates be printed to the console?}
-
-\item{n_samples}{If \code{yhat_extractor_name = 'sample'}, how many samples should be taken?}
 
 \item{extra_extractor_args}{A named list containing additional parameters to supply to the
 extractor function. See section "Extrator Functions" for more details.}

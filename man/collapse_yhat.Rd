@@ -4,7 +4,7 @@
 \alias{collapse_yhat}
 \title{Average sampled model predictions}
 \usage{
-collapse_yhat(space_coord, time_coord, yhat)
+collapse_yhat(augmented_data)
 }
 \arguments{
 \item{space_coord}{A gridcoord object (\code{\link[gridcoord]{gc_gridcoord}}) describing the

@@ -5,23 +5,32 @@
 \title{Fit a model over multiple time windows}
 \usage{
 loop_model(
-  space_coord,
-  time_coord,
-  data_for_model,
+  spacetime_data,
   outcome_col,
-  path_to_model,
+  model_function,
+  data_prep_function = NULL,
   min_train = 7,
   max_train = Inf,
   n_predict = 1,
+  step = 1,
   model_arity = c("multi", "uni"),
-  use_cache = FALSE,
-  force = FALSE,
-  save_environments = FALSE,
-  verbose = interactive(),
-  extra_model_args = list()
+  prediction_strategy = c("NA", "truncate"),
+  ...
 )
 }
 \arguments{
+\item{outcome_col}{The name of the column in \code{data_for_model} containing the primary outcome
+(e.g., the number of elevated cases).}
+
+\item{min_train}{The minimum number of time points to include in each model fit}
+
+\item{max_train}{The maximum number of time poitns to include in each model fit}
+
+\item{n_predict}{How many time points should be predicted each time the model is fit}
+
+\item{model_arity}{Can the model handle multiple spatial regions as once (\code{"multi"}) or only
+one (\code{ "uni"})}
+
 \item{space_coord}{A gridcoord object
 (\code{\link[gridcoord]{gc_gridcoord}}) describing the spatial area that is
 covered by \code{data_for_model}.}
@@ -35,21 +44,9 @@ the last entries corresponding to the most recent.}
 model. In addition, \code{data_for_model} must have two columns with the same column name and
 entries as the left-most columns in \code{space_coord} and \code{time_coord} columns.}
 
-\item{outcome_col}{The name of the column in \code{data_for_model} containing the primary outcome
-(e.g., the number of elevated cases).}
-
 \item{path_to_model}{The path to the model function, or the function itself. If a path to the
 model function, it must point to a .R file containing a single function. See the Details
 section or \code{vignette("model-functions")} for a more in-depth explanation.}
-
-\item{min_train}{The minimum number of time points to include in each model fit}
-
-\item{max_train}{The maximum number of time poitns to include in each model fit}
-
-\item{n_predict}{How many time points should be predicted each time the model is fit}
-
-\item{model_arity}{Can the model handle multiple spatial regions as once (\code{"multi"}) or only
-one (\code{ "uni"})}
 
 \item{use_cache}{Should the results from this function be saved (cached), so that the results can
 be quickly loaded without having to fit a (possibly very complicated) model.}

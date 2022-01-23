@@ -2,13 +2,13 @@
 % Please edit documentation in R/scanstatistics_helpers.R
 \name{switch_zone_rep}
 \alias{switch_zone_rep}
-\alias{build_key_matrix}
-\alias{build_zones}
+\alias{zones_to_key_matrix}
+\alias{key_matrix_to_zones}
 \title{Change how spatial zones are represented}
 \usage{
-build_key_matrix(zones)
+zones_to_key_matrix(zones)
 
-build_zones(key_matrix)
+key_matrix_to_zones(key_matrix)
 }
 \arguments{
 \item{zones}{A list where each entry is a zone. Each entry is a vector containing the indices of

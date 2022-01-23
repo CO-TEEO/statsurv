@@ -4,13 +4,13 @@
 \alias{pivot_for_scan}
 \title{Turn a long data.frame into a wide matrix}
 \usage{
-pivot_for_scan(df, value_col, column_coord, row_coord)
+pivot_for_scan(spacetime_data, value_col)
 }
 \arguments{
-\item{df}{A long (a.k.a. tidy) data.frame.}
-
 \item{value_col}{The name of the column that contains the data to be pivoted into the wide
 matrix. All columns other than \code{value_col} in \code{df} will be discarded.}
+
+\item{df}{A long (a.k.a. tidy) data.frame.}
 
 \item{column_coord, row_coord}{The columns in \code{df} that will become the column or row names of the
 returned matrix. These can each be either a \itemize{

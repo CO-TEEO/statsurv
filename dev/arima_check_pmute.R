@@ -74,4 +74,18 @@ model_yhats <- model_fits %>%
           aug_data = extract_yhat(fit, curr_data, xreg2))
 
 
+source("tests/testthat/cdc_se_calc.R")
+model_yhats_wv <- model_yhats %>%
+    pmute(v = sqrt(median(compute_arima_se(fit, add_intercept = FALSE))))
 
+scanres <- model_yhats_wv %>%
+    pmute(scanres = parallel_cusum_gaussian2(aug_data, outcome_name = "yp", baseline_name = ".fitted",
+                                             sigma = v, drift = 1))
+
+scanres %>%
+    select(curr_id_time = id_time,
+           scanres) %>%
+    unnest(scanres)
+# Ok, that works, more or less.
+# Excellent!
+# Now, can we start re-organizing these things?
