@@ -23,6 +23,11 @@ window_idtime <- function(spacetime_data, min_train,
 
   n_times <- length(unique(spacetime_data$id_time))
   stopifnot((min_train + n_predict) <= n_times)
+  stopifnot(min_train > 0,
+            n_predict >= 0,
+            max_train >= min_train,
+            min_train + n_predict <= nrow(spacetime_data))
+
 
   # Actual code
   spacetime_data <- dplyr::ungroup(spacetime_data)
