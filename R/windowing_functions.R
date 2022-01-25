@@ -1,15 +1,46 @@
-#' Title
+#' Divide data into overlapping windows
 #'
-#' @param spacetime_data
-#' @param min_train
-#' @param max_train
-#' @param n_predict
-#' @param model_arity
+#' This function divides a dataframe into overlapping time windows, in preparation for repeatedly
+#' applying statistical surveillance methods. Each window consists of 0 or more data points to fit a
+#' statistical model on, and 0 or more points to generate predictions for.
 #'
-#' @return
+#'
+#' @inheritParams spacetime_data
+#' @param min_train,max_train The minimum and maximum number of time points (as identified by
+#'   `id_time`) to include in the training data set. Times with fewer than this number of time
+#'   points will not be included as windows. Later times will include more time points in the
+#'   training data set, up to the maximum number identified by `max_train`.
+#' @param n_predict The number of time points (as identified by `id_time`) to have predictions
+#'   generated for.
+#' @param model_arity Whether each spatial area (as identified by `id_space`) should be located in
+#'   its own data window (if `model_arity = "uni"`) or if they should all be included in one window
+#'   (if `model_arith = "multi"`).
+#'
+#' @return A tibble with one row per data window, containing the columns `id_time`, `id_space`,
+#'   `split_id`, and `curr_data`. `id_time` and `id_space` identify the time point defining the end
+#'   of the time point and the spatial area or areas associated with the data window.  `split_id` is
+#'   the first time point in the data window in the prediction set. The data for each window is
+#'   stored in the `curr_data` column. There is no difference in the windowed data between data in
+#'   the training set and the prediction set, but that information is used by other `statsurv`
+#'   functions.
 #' @export
+#' @md
 #'
 #' @examples
+#' x = rnorm(100)
+#' spacetime_data <- data.frame(id_space = rep(1:10, each = 10),
+#'                              id_time = rep(1:10, 10),
+#'                              x = x,
+#'                              y = 2.04 * x + 1.23)
+#'
+#' Create overlapping groups of data with at least 4 time points and up to 8 time points in the
+#' training set, and 2 time points in the prediction set.
+#' window_idtime(spacetime_data, min_train = 4, max_train = 8,
+#'               n_predict = 2, model_arity = "multi")
+#'
+#' The same, but put each spatial area in its own window
+#' window_idtime(spacetime_data, min_train = 4, max_train = 8,
+#'               n_predict = 2, model_arity = "uni")
 window_idtime <- function(spacetime_data, min_train,
                           max_train = Inf, n_predict = 1,
                           model_arity = c("multi", "uni")) {
@@ -57,8 +88,9 @@ window_idtime <- function(spacetime_data, min_train,
                                                   function(df) df,
                                                   .before = before_func,
                                                   .after = 0,
-                                                  .complete = TRUE)) %>%
-    dplyr::select(id_space, id_time, curr_data) # Ditch all the other data - is that what we want to do?
+                                                  .complete = TRUE),
+                  split_id = id_time - n_predict + 1) %>%
+    dplyr::select(id_space, id_time, split_id, curr_data)
 
 
   spacetime_data <- spacetime_data %>%
@@ -69,9 +101,11 @@ window_idtime <- function(spacetime_data, min_train,
     spacetime_data <- spacetime_data %>%
       dplyr::group_by(id_time) %>%
       dplyr::summarize(id_space = list(id_space),
-                       curr_data = list(curr_data[[1]]))
+                       curr_data = list(curr_data[[1]]),
+                       split_id = split_id[[1]])
   }
-  spacetime_data
+  spacetime_data %>%
+    dplyr::select(id_time, id_space, split_id, curr_data)
 }
 
 window_date <- function(spacetime_data, min_train, max_train, predict_window, model_arity) {

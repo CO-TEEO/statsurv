@@ -7,7 +7,7 @@
 rowmute(.data, ...)
 }
 \arguments{
-\item{.data}{A data frame, data frame extension (e.g. a tibble)}
+\item{.data}{A data frame or a data frame extension (e.g. a tibble)}
 
 \item{...}{<data-masking> Name-value pairs. The name gives the name of the column in the output. Any output other than a vector of length 1 will be stored in a list-column.}
 }
@@ -18,7 +18,7 @@ rowmute(.data, ...)
 A version of mutate that automatically works row-wise and handles list-columns elegantly
 }
 \details{
-\code{\link[dplyr]{mutate}} is an extremely powerful function to adding or transforming variables. However, it's not designed for working with list-columns, so the syntax is often unwieldy. \code{rowmute} is a wrapper around \code{mutate} that handles that syntax and helps avoid some of the pitfalls.
+\code{\link[dplyr]{mutate}} is an extremely powerful function for adding or transforming variables in a data frame. However, it's not designed for working with list-columns, so the syntax is often unwieldy. \code{rowmute} is a wrapper around \code{mutate} that handles that syntax and helps avoid some of the pitfalls.
 
 \code{rowmute} differs from \code{mutate} in 3 ways:
 \enumerate{
