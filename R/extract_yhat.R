@@ -69,47 +69,14 @@
 #'
 #' sample_yhat(nm_county_coord, year_coord, fit_inla, NM_popcas, n_samples = 10)
 #' }
-extract_yhat <- function(fit, data, ...) {
+extract_yhat <- function(fit, newdata, ...) {
  UseMethod("extract_yhat", fit)
 }
 
-
-#' @param n_samples The number of random samples of the fitted values to draw.
-#' @describeIn extract_yhat Return random samples for fitted values
-#' @export
-sample_yhat <- function(fit, data, n_samples = 10) {
-  UseMethod("sample_yhat", fit)
-}
-
+# lm, glm, and merMod should be handled by broom and broom.mixed
 
 #' @export
-extract_yhat.lm <- function(fit, data, ...) {
-  data$.fitted <- stats::predict(fit, newdata = data, type = "response")
-  return(data)
-}
-
-#' @export
-sample_yhat.lm <- function(fit, data, n_samples) {
-
-  if (identical(class(fit), c("negbin", "glm", "lm"))) {
-    # A workaround to get arm::sim to work on negbin models
-    fit_faux <- fit
-    class(fit_faux) <- c("glm", "lm")
-    sim_coeffs <- arm::sim(fit_faux, n_samples)@coef
-  } else {
-    sim_coeffs <- arm::sim(fit, n_samples)@coef
-  }
-  sim_data <- apply(sim_coeffs, 1, predict_from_coeff, fit = fit, data = data)
-  sim_data <- as.data.frame(sim_data)
-  colnames(sim_data) <- paste0(".sample", seq_len(n_samples))
-
-  data <- cbind(data, sim_data)
-  return(data)
-}
-
-
-#' @export
-extract_yhat.inla <- function(fit, data) {
+extract_yhat.inla <- function(fit, newdata) {
   if (!requireNamespace("INLA", quietly = TRUE)) {
     stop("The 'INLA' package is required to use inla models in statsurv; ",
          "please install it before continuing")
@@ -117,7 +84,7 @@ extract_yhat.inla <- function(fit, data) {
   # Depending on how INLA is set up, we can get lots of different values back
   # I'm always going to be using the linear predictor.
   inla_link <- get_inla_link(fit)
-
+  browser()
   if (is.null(fit$marginals.linear.predictor)) {
     stop("Unable to extract fitted values from this inla-object. ",
             "The inla-object must be computed with option ",
@@ -134,47 +101,10 @@ extract_yhat.inla <- function(fit, data) {
   if (!is.null(fit$.args$E)) {
     fitted_values <- fitted_values * fit$.args$E
   }
-  data$.fitted <- stats::predict(fit, newdata = data, type = "response")
+
+  data$.fitted <- fitted_values
   return(data)
 }
-
-#' @export
-sample_yhat.inla <- function(fit, data, n_samples) {
-  smpl <- INLA::inla.posterior.sample(n = n_samples,
-                                      result = fit,
-                                      selection = list("Predictor" = 0))
-  samples <- list_transpose(smpl)
-  latent <- do.call(cbind, samples$latent)
-  colnames(latent) <- paste0(".sample", seq_len(ncol(latent)))
-
-
-  inla_link <- get_inla_link(fit)
-  fitted_values <- apply(latent, 2, inla_link, inverse = TRUE)
-
-  # Incorporate the exposure
-  if (!is.null(fit$.args$E)) {
-    sim_data <- apply(fitted_values, 2, function(x) x * fit$.args$E)
-  } else {
-    sim_data <- fitted_values
-  }
-  sim_data <- as.data.frame(sim_data)
-  rownames(sim_data) <- NULL
-
-  data <- cbind(data, sim_data)
-
-
-  if (any(is.na(fit$summary.fitted.values$mode))) {
-    warning("<NA> values present in summary.fitted.values. ",
-            "Extracted or sampled values may not be accurate")
-  }
-  if (is.null(fit$summary.fitted.values$mode)) {
-    warning("Unable to compare sampled values with extracted values. ",
-            "Impossible to know if sampled values are accurate. ",
-            "Use  option 'control.predictor=list(compute = TRUE) to avoid this warning.")
-  }
-  return(data)
-}
-
 
 #' @export
 extract_yhat.Arima <- function(fit, data, ...) {
@@ -266,9 +196,6 @@ extract_yhat.forecast_ARIMA <- function(fit, data, xreg) {
   return(data)
 }
 
-sample_yhat.Arima <- function(space_coord, time_coord, fit, data, n_samples = 10) {
-  stop("sample_yhat cannot be used on Arima models - use extract_yhat instead")
-}
 
 #' @export
 extract_yhat.merMod <- function(fit, data, ...) {
@@ -310,6 +237,10 @@ get_inla_link  <- function(fit) {
   return(inla_link)
 }
 
+#' @export
+extract_yhat.default <- function(fit, data, ...) {
+  generics::augment(fit, newdata = data, ...)
+}
 # validate_yhat <- function(space_coord, time_coord, yhat) {
 #   check_type(yhat, "data.frame")
 #   required_names <- c(gridcoord::gc_get_name(space_coord),

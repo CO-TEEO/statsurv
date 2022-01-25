@@ -9,6 +9,7 @@ test_that("INLA + f_lm", {
                             control.predictor = list(compute=TRUE))
 
   expected <- fit_inla_lm$summary.fitted.values$mean
+  extract_yhat(fit_inla_lm, ey_data)
   check_inla(ey_space, ey_time, fit_inla_lm, ey_data, expected)
 
   coeffs <- report_model_coeff(fit_inla_lm)
