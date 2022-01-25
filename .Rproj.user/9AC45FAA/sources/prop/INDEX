@@ -43,6 +43,8 @@ X%3A%2F.shortcut-targets-by-id%2F1BdqJQIKFw2JMRzjqCRQfG5jdfAvZEk_o%2FEnhanced%20
 ~%2Fr-analysis%2Fstatsurv%2Ftests%2Ftestthat%2Fcdc_se_calc.R="1F47FC36"
 ~%2Fr-analysis%2Fstatsurv%2Ftests%2Ftestthat%2Fmodel_extractor.R="06D6BD39"
 ~%2Fr-analysis%2Fstatsurv%2Ftests%2Ftestthat%2Fmodel_extractor2.R="A9863C57"
+~%2Fr-analysis%2Fstatsurv%2Ftests%2Ftestthat%2Fsetup-extract_yhat.R="F3EF08F2"
+~%2Fr-analysis%2Fstatsurv%2Ftests%2Ftestthat%2Ftest-extract_yhat-lm.R="A67060CE"
 ~%2Fr-analysis%2Fstatsurv%2Ftests%2Ftestthat%2Ftest-extract_yhat.R="A838F598"
 ~%2Fr-analysis%2Fstatsurv%2Ftests%2Ftestthat%2Ftest-intergration_arima.R="39382D67"
 ~%2Fr-analysis%2Fstatsurv%2Ftests%2Ftestthat%2Ftest-loop_alarm_functions.R="25D2F1B4"
