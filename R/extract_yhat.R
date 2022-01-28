@@ -73,155 +73,62 @@ extract_yhat <- function(fit, newdata, ...) {
  UseMethod("extract_yhat", fit)
 }
 
+#' @export
+extract_yhat.default <- function(fit, newdata, ...) {
+  generics::augment(fit, newdata = newdata, ...)
+}
+
 # lm, glm, and merMod should be handled by broom and broom.mixed
+# So the key ones to handle are INLA and forecast_ARIMA, if I can.
 
 #' @export
-extract_yhat.inla <- function(fit, newdata) {
+extract_yhat.inla <- function(fit, newdata, se_fit = FALSE, ...) {
   if (!requireNamespace("INLA", quietly = TRUE)) {
     stop("The 'INLA' package is required to use inla models in statsurv; ",
          "please install it before continuing")
   }
   # Depending on how INLA is set up, we can get lots of different values back
   # I'm always going to be using the linear predictor.
-  inla_link <- get_inla_link(fit)
-  browser()
   if (is.null(fit$marginals.linear.predictor)) {
     stop("Unable to extract fitted values from this inla-object. ",
-            "The inla-object must be computed with option ",
-            "'control.predictor=list(compute = TRUE) to extract fitted values.")
+         "The inla-object must be computed with option ",
+         "'control.predictor=list(compute = TRUE) to extract fitted values.")
   }
 
+  inla_link <- get_inla_link(fit)
+  inv_link <- function(x) {
+    inla_link(x, inverse = TRUE)
+  }
   linear_predictor_marginals <- fit$marginals.linear.predictor
-  transform_to_fitted <- function(marginal) {
-    INLA::inla.emarginal(inla_link, marginal, inverse = TRUE)
-  }
-  fitted_values <- vapply(linear_predictor_marginals, transform_to_fitted, numeric(1))
 
-  # Fitted values does not include the exposure, so we need to account for that
-  if (!is.null(fit$.args$E)) {
-    fitted_values <- fitted_values * fit$.args$E
-  }
-
-  data$.fitted <- fitted_values
-  return(data)
-}
-
-#' @export
-extract_yhat.Arima <- function(fit, data, ...) {
-  if (!requireNamespace("forecast", quietly = TRUE)) {
-    stop("The 'forecast' package is required to use ARIMA models in statsurv; ",
-         "please install it before continuing. ",
-         "After installation, fit your models by calling 'forecast::Arima' rather than ",
-         "arima")
+  if (se_fit) {
+    transformed_marginals <- purrr::map(linear_predictor_marginals, INLA::inla.tmarginal, fun = inv_link)
+    fitted_values <- purrr::map_dfr(transformed_marginals, INLA::inla.zmarginal, silent = TRUE)
+    fitted_mean <- fitted_values$mean
+    fitted_sd <- fitted_values$sd
+    if (!is.null(fit$.args$E)) {
+      # Fitted values does not include the exposure, so we need to account for that
+      fitted_mean <- fitted_mean * fit$.args$E
+      fitted_sd <- fitted_sd * fit$.args$E
+    }
+    newdata$.fitted <- fitted_mean
+    newdata$.se.fit <- fitted_sd
   } else {
-    stop("statsurv does not work with basic arima models. Please use 'forecast::Arima' instead of ",
-         " the 'arima' function.")
+    fitted_mean <- purrr::map_dbl(linear_predictor_marginals, INLA::inla.emarginal, fun = inv_link)
+    if (!is.null(fit$.args$E)) {
+      # Fitted values does not include the exposure, so we need to account for that
+      fitted_mean <- fitted_mean * fit$.args$E
+    }
+    newdata$.fitted <- fitted_mean
   }
+
+  response_var <- all.vars(fit$.args$formula)[[1]]
+  if (response_var %in% names(newdata)) {
+    newdata$.resid <- newdata[[response_var]] - newdata$.fitted
+  }
+  return(newdata)
 }
 
-#' @title Extract fitted values from a forecast_ARIMA model object
-#'
-#'
-#' @param xreg A matrix of covariate information used to calculate ARIMA values. Must cover the
-#'   exact same temporal and spatial locations as `data`
-#' @param n_ahead How many data points should be predicted?
-#' @param ... Other arguments
-#' @inheritParams extract_yhat
-#'
-#' @details ARIMA models currently only have limited support in the statsurv package. The syntax for
-#'   fitting and working with ARIMA models is significantly different than that of `lm` or `glm`
-#'   models. Some of the key differences are:
-#' \enumerate{
-#'   \item extract_yhat.forecast_ARIMA only works on models containing a single time series. In
-#'   other words, the space coordinate must only have a single location.
-#'   \item forecast_ARIMA models do not use the `data` parameter, instead any covariates must be
-#'   included in the matrix `xreg`
-#'   \item extract_yhat.forecast_ARIMA needs to know how many time-steps ahead should be predicted,
-#'   as specified by the `n_ahead` parameter.
-#'   }
-#' @inherit extract_yhat return
-#' @seealso \code{\link{extract_yhat}}, \code{\link[forecast]{forecast}}
-#' @export
-#' @md
-#' @examples
-#' \dontrun{
-#' library("scanstatistics")
-#' library("forecast")
-#' nm_county_coord <- statsurv::nm_county_coord
-#' data(NM_popcas)
-#' year_coord <- generate_date_range(lubridate::ymd("1973-01-01"),
-#'                                   lubridate::ymd("1991-01-01"),
-#'                                   time_division = "year")
-#' year_coord$year <- year_coord$date_label
-#' year_coord <- gridcoord::gc_gridcoord(year_coord, "year")
-#'
-#' # Fit the data for Santa Fe county via an ARIMA model,
-#' # not including the last 2 data points:
-#' santa_fe <- NM_popcas %>%
-#'   dplyr::filter(county == "santafe")
-#' sf_coord <- nm_county_coord %>%
-#'   dplyr::filter(county == "santafe")
-#' n <- seq(1, nrow(santa_fe) - 2)
-#' xreg = as.matrix(santa_fe[n, "population", drop = FALSE])
-#' fit_Arima <- Arima(santa_fe$count[n],
-#'                    order = c(2, 1, 0),
-#'                    xreg = xreg[n, , drop = FALSE])
-#'
-#' # Then use extract_yhat to generate predictions:
-#' # Because we did not include the last 2 points in fitting the model,
-#' # we set n_ahead = 2
-#' extract_yhat(sf_coord, year_coord, fit_Arima, santa_fe,
-#'              xreg, n_ahead = 2)
-#' }
-extract_yhat.forecast_ARIMA <- function(fit, data, xreg) {
-  if (!requireNamespace("forecast", quietly = TRUE)) {
-    stop("The 'forecast' package is required to use ARIMA models in statsurv; ",
-      "please install it before continuing")
-  }
-  n_ahead <- nrow(data) - length(fit$fitted)
-  if (missing(xreg)) {
-   new_predictions <- as.numeric(
-     forecast::forecast(fit, h = n_ahead)$mean
-   )
-  } else {
-    rows_to_use <- seq(nrow(xreg) - n_ahead + 1, nrow(xreg))
-    new_xreg <- xreg[rows_to_use, , drop = FALSE]
-    new_predictions <- as.numeric(
-      forecast::forecast(fit, h = n_ahead, xreg = new_xreg)$mean
-      )
-  }
-  old_predictions <- as.numeric(fit$fitted)
-  predictions <- c(old_predictions, new_predictions)
-  data$.fitted <- predictions
-  return(data)
-}
-
-
-#' @export
-extract_yhat.merMod <- function(fit, data, ...) {
-  if (!requireNamespace("lme4", quietly = TRUE)) {
-    stop("The 'lme4' package is required to use lmerMod or glmerMod models in statsurv; ",
-         "please install it before continuing")
-  }
-
-  # There is an issue in predict.merMod where the offset is not taken into account on new data
-  # when the offset is specified as an option to the glmer function call.
-  # https://github.com/lme4/lme4/issues/447
-  if ("(offset)" %in% colnames(stats::model.frame(fit))) {
-    stop("predict.merMod does not work if an offset is included as an option in glmer.",
-         " This is a known bug in the lme4 package.",
-         "As a workaround, offsets can be specified as a term in the model formula ",
-         "via 'offset(VAR)'")
-  }
-  data$.fitted <- stats::predict(fit, newdata = data, type = "response")
-  return(data)
-}
-
-
-predict_from_coeff <- function(coeffs, fit, data) {
-  fit$coefficients <- coeffs
-  stats::predict(fit, newdata = data, type = "response")
-}
 
 get_inla_link  <- function(fit) {
   family <- fit$.args$family
@@ -236,102 +143,3 @@ get_inla_link  <- function(fit) {
   inla_link <- eval(parse(text = function_name))
   return(inla_link)
 }
-
-#' @export
-extract_yhat.default <- function(fit, data, ...) {
-  generics::augment(fit, newdata = data, ...)
-}
-# validate_yhat <- function(space_coord, time_coord, yhat) {
-#   check_type(yhat, "data.frame")
-#   required_names <- c(gridcoord::gc_get_name(space_coord),
-#                       gridcoord::gc_get_name(time_coord))
-#   n_names <- length(required_names)
-#   yhat_names <- colnames(yhat)
-#   if (!all(required_names %in% yhat_names[1:n_names])) {
-#     stop("yhat is not formed correctly. ",
-#          "The first columns of the yhat data.frame must be the same as ",
-#          "the names of the space and time coordinates")
-#   }
-#   if (ncol(yhat) <= n_names) {
-#     stop("The yhat data.frame must have one or more columns of predicted data")
-#   }
-#   return(yhat)
-# }
-
-
-#' @title Average sampled model predictions
-#'
-#' @description Average model predictions generated by \code{\link{sample_yhat}}.
-#'
-#' @param space_coord A gridcoord object (\code{\link[gridcoord]{gc_gridcoord}}) describing the
-#'   spatial area that is covered by `yhat`.
-#' @param time_coord A gridcoord object (\code{\link[gridcoord]{gc_gridcoord}}) describing the time
-#'   span that is covered by `yhat`.
-#' @param yhat A data.frame created by \code{\link{sample_yhat}} whose first two columns correspond
-#'   to `space_coord` and `time_coord`, and whose remaining columns are random samples of the model
-#'   predictions.
-#'
-#' @return A data.frame whose first two columns correspond to `space_coord` and `time_coord`, and
-#'   whose third column is the mean of all the samples in `yhat`.
-#' @export
-#' @md
-#' @seealso \code{\link{sample_yhat}}
-#' @examples
-#' x <- rnorm(20, mean = 0, sd = 5)
-#' y <- 1.3 + 2.5 * x + rnorm(20, sd = 1)
-#' fit <- lm(y ~ x)
-#'
-#' new_data <- data.frame(space = c("s1"),
-#'                        time = c("t1", "t2", "t3"),
-#'                        x = c(-3, 3, 8),
-#'                        stringsAsFactors = FALSE)
-#' space_coord <- data.frame(space = "s1",
-#'                           stringsAsFactors = FALSE)
-#' time_coord <- data.frame(time = c("t1", "t2", "t3"),
-#'                          stringsAsFactors = FALSE)
-#'
-#' yhat <- sample_yhat(space_coord,
-#'                     time_coord,
-#'                     fit,
-#'                     new_data,
-#'                     n_samples = 10)
-#'
-#' collapse_yhat(space_coord, time_coord, yhat)
-collapse_yhat <- function(augmented_data) {
-  wanted_names <- startsWith(colnames(augments_data), ".sample")
-  yhat_samples <- augmented_data[, wanted_names, drop = FALSE]
-  collapsed_samples <- rowMeans(yhat_samples)
-  names(collapsed_samples) <- ".fitted"
-  collapsed_yhat <- cbind(augmented_data[, !wanted_names, drop = FALSE], collapsed_samples)
-
-  return(collapsed_yhat)
-}
-
-parse_yhat_extractor <- function(var) {
-  # Possible values:
-  # NULL - do nothing
-  # "extract" - use the extract_yhat
-  # "sample" - use the sample
-  # A path to a file - use the magic function loader
-  # A function - use that function
-  if (is.null(var)) {
-    return(var)
-    }
-  if (is.function(var)) {
-    return(var)
-    }
-
-  if (is.character(var)) {
-    if (var == "extract") {
-      return(extract_yhat)
-    }
-
-    if (var == "sample") {
-      return(sample_yhat)
-    }
-
-  }
-  stop("Unable to understand the yhat_extractor_func argument. ",
-       "Allowed character values are NULL, 'extract', 'sample', or a user-supplied function")
-}
-

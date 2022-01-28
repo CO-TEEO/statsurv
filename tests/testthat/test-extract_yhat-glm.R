@@ -1,3 +1,30 @@
+glm_combos <- tibble::tribble(~f_name, ~link_name, ~offset,
+                              "f_lm", "gaussian", FALSE,
+                              "f_lm_noint", "gaussian", FALSE,
+                              "f_lm_f", "gaussian", FALSE,
+                              "f_logit", c("logit", "probit"), FALSE,
+                              "f_logit_trans", c("logit", "probit"), FALSE,
+                              "f_logit_noint", c("logit", "probit"), FALSE,
+                              "f_logit_f", c("logit", "probit"), FALSE,
+                              "f_logit_noint_f", c("logit", "probit"), FALSE,
+                              "f_pois", "poisson", FALSE,
+                              "f_pois_f", "poisson", FALSE) %>%
+  tidyr::unnest_longer("link_name")
+
+link_lookup <- list(gaussian = gaussian(link = "identity"),
+                    logit = binomial(link = "logit"),
+                    probit = binomial(link = "probit"),
+                    poisson = poisson(link = "log"))
+
+for (ind in seq_len(nrow(glm_combos))) {
+  curr_row <- glm_combos[ind, , drop = FALSE]
+  fit <- glm(formulas[[curr_row$f_name]],
+             data = ey_data,
+             family = link_lookup[[curr_row$link_name]])
+  compare_extract_aug(fit, ey_newdata)
+}
+
+
 ### f_lm ----
 fit_glm_lm <- glm(formulas$f_lm,
                   data = ey_data,
@@ -24,6 +51,8 @@ test_that("Of class glm", {
   expect_true("glm" %in% class(fit_glm_lm_f))
 })
 check_yhat_means(ey_space, ey_time, fit_glm_lm_f, ey_data)
+
+
 
 
 ### f_logit (logit) ----
@@ -62,6 +91,9 @@ test_that("Of class glm", {
 })
 check_yhat_means(ey_space, ey_time, fit_glm_logit_trans_pro, ey_data)
 
+
+
+
 ### f_logit_noint (logit) ----
 fit_glm_logit_noint_lo <- glm(formulas$f_logit_noint,
                               data = ey_data,
@@ -98,6 +130,8 @@ test_that("Of class glm", {
 })
 check_yhat_means(ey_space, ey_time, fit_glm_logit_f_pro, ey_data)
 
+# So, we have the link, we have the formula...
+
 ### f_logit_noint_f (logit) ----
 fit_glm_logit_noint_f_lo <- glm(formulas$f_logit_noint_f,
                              data = ey_data,
@@ -115,6 +149,8 @@ test_that("Of class glm", {
   expect_true("glm" %in% class(fit_glm_logit_noint_f_pro))
 })
 check_yhat_means(ey_space, ey_time, fit_glm_logit_noint_f_pro, ey_data)
+
+
 
 
 

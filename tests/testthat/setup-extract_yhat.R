@@ -24,94 +24,97 @@ expect_similar <- function(object, object2, pcnt_err = 0.05, abs_err = 0.2) {
   fail(msg)
 }
 
-check_yhat_means <- function(space_coord, time_coord, fit, data, n_samples = 100, tol = 0.01) {
-  yhat <- extract_yhat(space_coord, time_coord, fit, data)
-  test_that("extract_yhat gives a data frame", {expect_true(is.data.frame(yhat))})
-  row_has_na <- apply(data, 1, function(x) {any(is.na(x))})
-  non_na_inds <- which(row_has_na == FALSE)
-  test_that("extract_yhat matches predict", {
-    expect_equal(yhat[[3]][non_na_inds], unname(predict(fit, type = "response")))
-  })
-  test_that("sample_yhat converges to extract_yhat", {
-    samples <- sample_yhat(space_coord, time_coord, fit, data, n_samples = n_samples)
-    expect_similar(rowMedians(samples[, 3:ncol(samples)]), yhat[[3]])
-  })
+compare_extract_aug <- function(fit, newdata) {
+  yhat <- extract_yhat(fit, newdata)
+  aug <- augment(fit, newdata = newdata)
+  expect_equal(yhat, aug)
+  expect_true(".fitted" %in% colnames(yhat))
+  expect_true(is.data.frame(yhat))
 }
 
-check_inla <- function(space_coord,
-                       time_coord,
-                       fit,
-                       data,
-                       expected,
-                       tol = 1e-4,
-                       invlink = arm::invlogit,
-                       n_samples = 100) {
+# check_yhat_means <- function(space_coord, time_coord, fit, data, n_samples = 100, tol = 0.01) {
+#   yhat <- extract_yhat(space_coord, time_coord, fit, data)
+#   test_that("extract_yhat gives a data frame", {expect_true(is.data.frame(yhat))})
+#   row_has_na <- apply(data, 1, function(x) {any(is.na(x))})
+#   non_na_inds <- which(row_has_na == FALSE)
+#   test_that("extract_yhat matches predict", {
+#     expect_equal(yhat[[3]][non_na_inds], unname(predict(fit, type = "response")))
+#   })
+#   test_that("sample_yhat converges to extract_yhat", {
+#     samples <- sample_yhat(space_coord, time_coord, fit, data, n_samples = n_samples)
+#     expect_similar(rowMedians(samples[, 3:ncol(samples)]), yhat[[3]])
+#   })
+# }
 
-  test_that("Of class INLA", {
-    expect_true("inla" %in% class(fit))
-  })
-
-  yhat <- extract_yhat(space_coord, time_coord, fit, data)
-  test_that("extract_yhat gives a data frame", {expect_true(is.data.frame(yhat))})
-  row_has_na <- apply(data, 1, function(x) {any(is.na(x))})
-  non_na_inds <- which(row_has_na == FALSE)
-
-  test_that("extract_yhat.INLA matches expected", {
-    expect_equal(yhat[[3]],
-                 expected,
-                 max_diffs = 14,
-                 tolerance = tol)
-  })
-  test_that("sample_yhat.INLA coverges to extract_yhat.INLA", {
-    samples <- suppressWarnings(sample_yhat(space_coord, time_coord, fit, data, n_samples))
-    expect_similar(rowMeans(samples[, 3:ncol(samples)]), yhat[[3]])
-  })
-}
-
-check_mermod <- function(space_coord, time_coord, fit, data, tol = 0.01) {
-  yhat <- extract_yhat(space_coord, time_coord, fit, data)
-  test_that("extract_yhat gives a data frame", {expect_true(is.data.frame(yhat))})
-  row_has_na <- apply(data, 1, function(x) {any(is.na(x))})
-  non_na_inds <- which(row_has_na == FALSE)
-  test_that("extract_yhat matches predict", {
-    expect_equal(yhat[[3]][non_na_inds], unname(predict(fit, type = "response")))
-  })
-}
+#
+# check_inla <- function(space_coord,
+#                        time_coord,
+#                        fit,
+#                        data,
+#                        expected,
+#                        tol = 1e-4,
+#                        invlink = arm::invlogit,
+#                        n_samples = 100) {
+#
+#   test_that("Of class INLA", {
+#     expect_true("inla" %in% class(fit))
+#   })
+#
+#   yhat <- extract_yhat(space_coord, time_coord, fit, data)
+#   test_that("extract_yhat gives a data frame", {expect_true(is.data.frame(yhat))})
+#   row_has_na <- apply(data, 1, function(x) {any(is.na(x))})
+#   non_na_inds <- which(row_has_na == FALSE)
+#
+#   test_that("extract_yhat.INLA matches expected", {
+#     expect_equal(yhat[[3]],
+#                  expected,
+#                  max_diffs = 14,
+#                  tolerance = tol)
+#   })
+#   test_that("sample_yhat.INLA coverges to extract_yhat.INLA", {
+#     samples <- suppressWarnings(sample_yhat(space_coord, time_coord, fit, data, n_samples))
+#     expect_similar(rowMeans(samples[, 3:ncol(samples)]), yhat[[3]])
+#   })
+# }
+#
+# check_mermod <- function(space_coord, time_coord, fit, data, tol = 0.01) {
+#   yhat <- extract_yhat(space_coord, time_coord, fit, data)
+#   test_that("extract_yhat gives a data frame", {expect_true(is.data.frame(yhat))})
+#   row_has_na <- apply(data, 1, function(x) {any(is.na(x))})
+#   non_na_inds <- which(row_has_na == FALSE)
+#   test_that("extract_yhat matches predict", {
+#     expect_equal(yhat[[3]][non_na_inds], unname(predict(fit, type = "response")))
+#   })
+# }
 
 # Then create some basic data to test on:
+# id_time <- seq(1:100)
 time_coord <- generate_date_range(lubridate::ymd("2010-01-01"),
                                   lubridate::ymd("2019-12-21"),
-                                  time_division = "year")
-space_coord <- data.frame(space_reg = c("A", "B", "C", "D", "E", "F", "G", "H", "I", "J"),
-                          stringsAsFactors = FALSE) %>%
-  gridcoord::gc_gridcoord()
-comb_coords <- gridcoord::gc_expand(space_coord, time_coord)
-n <- nrow(comb_coords)
-na_inds <- 1:10
+                                  time_division = "month") %>%
+  tibble::as_tibble()
+
+spacetime_data <- expand.grid(id_time = seq_len(nrow(time_coord)),
+                              id_space = 1:10) %>%
+  dplyr::mutate(start_date = time_coord$start_date[id_time])
+
+n <- nrow(spacetime_data)
+na_inds <- which(spacetime_data$id_time == max(spacetime_data$id_time))
 good_inds <- seq_len(n)[-na_inds]
-
-
-ey_time <- time_coord
-ey_space <- space_coord
 
 x_continuous <- runif(n, min = -5, max = 10) #continuous predictor
 x_discrete <- sample(c("L1", "L2", "L3", "L4", "L5"), n, replace = TRUE) #discrete predictor
 x_exp <- exp(runif(n, min = 0, max = 5.7))
 x_binary <- rbinom(n, 1, 0.5)
-# x_pos = runif(n, min = 5)
 
 exposure <- runif(n, min = 5, max = 200)
 offset <- log(exposure)
 factor_coeffs <- c(-2, 3, 1, 2, -1) %>%
   magrittr::set_names(sort(unique(x_discrete)))
 
-space_coeffs <- space_coord %>%
-  dplyr::rowwise() %>%
-  dplyr::mutate(space_coeffs = rnorm(sd = 6,n = 1)) %>%
-    .$space_coeffs %>%
-  magrittr::set_names(gridcoord::gc_get_labels(space_coord))
+space_coeffs <- rnorm(sd = 6, n = length(unique(spacetime_data$id_space)))
 
-ey_data <- cbind(comb_coords, x_continuous, x_discrete, x_exp, x_binary, exposure, offset) %>%
+ey_newdata <- cbind(spacetime_data, x_continuous, x_discrete, x_exp, x_binary, exposure, offset) %>%
   dplyr::mutate(y_lm = 3 + 2.5 * x_continuous + rnorm(n, sd = 2),
                 y_lm_f = 3 + 2.5 * x_continuous + factor_coeffs[x_discrete] + rnorm(n, sd= 2),
                 y_logit = rbinom(n, 1, arm::invlogit(x_exp * 0.05 + 1)),
@@ -121,9 +124,13 @@ ey_data <- cbind(comb_coords, x_continuous, x_discrete, x_exp, x_binary, exposur
                 y_qpois_off = rnbinom(n,
                                       mu = exp(-3 + 0.012 * x_continuous - 0.20 * x_binary + offset),
                                       size = 0.5),
-                y_varint = 3 + 2.5 * x_continuous + space_coeffs[.data$space_reg] + rnorm(n, sd = 3)) %>%
+                y_varint = 3 + 2.5 * x_continuous + space_coeffs[.data$id_space] + rnorm(n, sd = 3))
+
+ey_data <- ey_newdata %>%
   dplyr::mutate_at(dplyr::vars(dplyr::starts_with("y_")),
                    function(x) {x[na_inds] <- NA; return(x)})
+
+
 
 
 formulas <- list(
