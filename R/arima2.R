@@ -8,20 +8,21 @@
 #' @export
 #'
 #' @examples
-arima2 <- function(f, data, ...) {
+arima_tidy <- function(f, data, ...) {
   xreg <- gen_xreg(f, data)
   resp <- gen_resp(f, data)
   fit <- arima(resp, xreg = xreg, ...)
   fit$formula <- f
   fit$data <- data
   fit$fitted <- resp - fit$residuals
-  class(fit) <- c("arima2", class(fit))
+  class(fit) <- c("arima_tidy", class(fit))
   fit
 }
 
 
-augment.arima2 <- function(fit, newdata, ...) {
 
+augment.arima_tidy <- function(fit, newdata, ...) {
+  browser()
   n_ahead <- nrow(newdata) - length(fit$fitted)
   new_xreg <- gen_xreg(fit$formula, newdata)
   # What's the cleanest way to get only the new rows?
