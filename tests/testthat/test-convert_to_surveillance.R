@@ -3,179 +3,243 @@
 
 set.seed(986561351)
 
-space_coord <- rgdal::readOGR("three_zips/three_zips.shp",
-                              verbose = FALSE,
-                              stringsAsFactors = FALSE) %>%
-  gridcoord::gc_gridcoord()
 
-single_space <- space_coord[1, ]
+x = rnorm(100)
+spacetime_data <- data.frame(id_space = rep(1:10, each = 10),
+                             id_time = rep(1:10, 10),
+                             x = x,
+                             y = 2.04 * x + 1.23)
 
-time_coord <- data.frame(time = c(1, 2, 3, 4, 5),
-                         start = seq(1.1, 5.1, by = 1),
-                         fin = seq(1.9, 5.9, by = 1))
-
-
-list_of_dfs <- lapply(1:5,
-                      function(n) {
-                        gridcoord::gc_expand(time_coord[seq(max(n-1, 1), n), 1 , drop = FALSE], space_coord) %>%
-                          dplyr::mutate(obs = n + as.numeric(zcta_str)/1e5)
-                      })
-
-names(list_of_dfs) <- 1:5
-list_of_dfs[[1]] <- NA
-list_of_dfs[[2]] <- NA
-
-check_all_coord_types <- function(spdf_coord, span_coord, all_dfs, ...) {
-  expect_error(res1 <- convert_to_surveillance(spdf_coord, span_coord, all_dfs, ...),
-               NA)
-  sf_coord <- sf::st_as_sf(spdf_coord)
-  point_space_coord <- sf::st_drop_geometry(sf_coord)
-  point_time_coord <- span_coord[, 1, drop = FALSE]
-
-  expect_error(res2 <- convert_to_surveillance(sf_coord, span_coord, all_dfs, ...),
-               NA)
-  expect_error(res3 <- convert_to_surveillance(point_space_coord, span_coord, all_dfs, ...),
-               NA)
-  expect_error(res4 <- convert_to_surveillance(spdf_coord, point_time_coord, all_dfs, ...),
-               NA)
-  expect_error(res5 <- convert_to_surveillance(point_space_coord, point_time_coord, all_dfs, ...),
-               NA)
-  expect_error(res6 <- convert_to_surveillance(sf_coord, point_time_coord, all_dfs, ...),
-               NA)
-
-  expect_equal(res1, res2)
-  expect_equal(res1, res3)
-  expect_equal(res1, res4)
-  expect_equal(res1, res5)
-  expect_equal(res1, res6)
+check_surv <- function(surv_dfs, base, .id_time) {
+  check_entry <- function(x, base) {
+    expect_equal(dplyr::filter(x, id_time == .id_time),
+                 dplyr::filter(base, id_time == .id_time))
+  }
+  purrr::walk(surv_dfs, check_entry, base = base)
+}
+check_lengths <- function(surv_dfs, lengths) {
+  expect_equal(purrr::map_dbl(surv_dfs, nrow),
+               lengths)
 }
 
-test_that("convert_to_surveillance works", {
-  res <- convert_to_surveillance(space_coord, time_coord, list_of_dfs, n_predict = 1) %>%
-    loop_over(space_coord, time_coord, ., function(x) dplyr::arrange(x, time, zcta_str))
+test_that("Works for n_predict = 1, model_arity = 'multi'", {
+  base_df <- window_idtime(spacetime_data, min_train = 5, max_train = 8, n_predict = 1, model_arity = "multi") %>%
+    rowmute(aug_data = dplyr::mutate(curr_data, .fitted = rnorm(dplyr::n())))
 
-  expect_equal(res$`2`, NA)
-  expect_equal(res$`5`$obs, c(4.80203, 4.80401, 4.80746, 5.80203, 5.80401, 5.80746))
+  surv_df <- base_df %>%
+    dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                               include_init = FALSE,
+                                                               grow_length = FALSE))
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 6)
+  check_surv(surv_df$surv_data[-1], surv_df$aug_data[[2]], .id_time = 7)
+  check_lengths(surv_df$surv_data, c(10, 20, 30, 40, 50))
 
-  check_all_coord_types(space_coord, time_coord, list_of_dfs)
+  surv_df <- base_df %>%
+    dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                               include_init = TRUE,
+                                                               grow_length = FALSE))
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 2)
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 6)
+  check_surv(surv_df$surv_data[-1], surv_df$aug_data[[2]], .id_time = 7)
+  check_lengths(surv_df$surv_data, c(60, 70, 80, 90, 90))
+
+  surv_df <- base_df %>%
+    dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                               include_init = FALSE,
+                                                               grow_length = TRUE))
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 6)
+  check_surv(surv_df$surv_data[-1], surv_df$aug_data[[2]], .id_time = 7)
+  check_lengths(surv_df$surv_data, c(10, 20, 30, 40, 50))
+
+  surv_df <- base_df %>%
+    dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                               include_init = TRUE,
+                                                               grow_length = TRUE))
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 2)
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 6)
+  check_surv(surv_df$surv_data[-1], surv_df$aug_data[[2]], .id_time = 7)
+  check_lengths(surv_df$surv_data, c(60, 70, 80, 90, 100))
 })
 
-test_that("grow_length means we grow the length", {
-  res <- convert_to_surveillance(space_coord, time_coord, list_of_dfs,
-                                 n_predict = 1, grow_length = TRUE) %>%
-    loop_over(space_coord, time_coord, ., function(x) dplyr::arrange(x, time, zcta_str))
-  expect_equal(res$`2`, NA)
-  expect_equal(res$`5`$obs, c(3.80203, 3.80401, 3.80746,
-                              4.80203, 4.80401, 4.80746,
-                              5.80203, 5.80401, 5.80746))
+test_that("Works for n_predict = 1, model_arity = 'uni'", {
+  base_df <- window_idtime(spacetime_data, min_train = 5, max_train = 8, n_predict = 1, model_arity = "uni") %>%
+    rowmute(aug_data = dplyr::mutate(curr_data, .fitted = rnorm(dplyr::n())))
 
-  check_all_coord_types(space_coord, time_coord, list_of_dfs)
+  big_surv_df <- base_df %>%
+    dplyr::group_by(id_space) %>%
+    dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                               include_init = FALSE,
+                                                               grow_length = FALSE)) %>%
+    dplyr::ungroup()
+  surv_df <- big_surv_df %>%
+    dplyr::filter(id_space == sample.int(10, size = 1))
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 6)
+  check_surv(surv_df$surv_data[-1], surv_df$aug_data[[2]], .id_time = 7)
+  check_lengths(surv_df$surv_data, c(1, 2, 3, 4, 5))
+
+  big_surv_df <- base_df %>%
+    dplyr::group_by(id_space) %>%
+    dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                               include_init = TRUE,
+                                                               grow_length = FALSE)) %>%
+    dplyr::ungroup()
+  z <- sample.int(10, size = 1)
+  surv_df <- big_surv_df %>%
+    dplyr::filter(id_space == z)
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 2)
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 6)
+  check_surv(surv_df$surv_data[-1], surv_df$aug_data[[2]], .id_time = 7)
+  check_lengths(surv_df$surv_data, c(6, 7, 8, 9, 9))
+
+  big_surv_df <- base_df %>%
+    dplyr::group_by(id_space) %>%
+    dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                               include_init = FALSE,
+                                                               grow_length = TRUE)) %>%
+    dplyr::ungroup()
+
+  surv_df <- big_surv_df %>%
+    dplyr::filter(id_space == sample.int(10, size = 1))
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 6)
+  check_surv(surv_df$surv_data[-1], surv_df$aug_data[[2]], .id_time = 7)
+  check_lengths(surv_df$surv_data, c(1, 2, 3, 4, 5))
+
+  big_surv_df <- base_df %>%
+    dplyr::group_by(id_space) %>%
+    dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                               include_init = TRUE,
+                                                               grow_length = TRUE)) %>%
+    dplyr::ungroup()
+  surv_df <- big_surv_df %>%
+    dplyr::filter(id_space == sample.int(10, size = 1))
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 2)
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 6)
+  check_surv(surv_df$surv_data[-1], surv_df$aug_data[[2]], .id_time = 7)
+  check_lengths(surv_df$surv_data, c(6, 7, 8, 9, 10))
 })
 
-test_that("return_last_only means we only return a single df", {
-  res <- convert_to_surveillance(space_coord, time_coord, list_of_dfs,
-                                 n_predict = 1,
-                                 return_last_only = TRUE) %>%
-     dplyr::arrange(time, zcta_str)
-  expect_true(is.data.frame(res))
-  expect_equal(res$obs, c(4.80203, 4.80401, 4.80746,
-                          5.80203, 5.80401, 5.80746))
+test_that("Gives an error if id_space doesn't line up", {
+  split_df <- window_idtime(spacetime_data, min_train = 5, max_train = 8, n_predict = 1,
+                           model_arity = "uni") %>%
+    rowmute(aug_data = dplyr::mutate(curr_data, .fitted = rnorm(dplyr::n())))
+  comb_df <- window_idtime(spacetime_data, min_train = 5, max_train = 8, n_predict = 1,
+                           model_arity = "multi") %>%
+    rowmute(aug_data = dplyr::mutate(curr_data, .fitted = rnorm(dplyr::n())))
+  expect_error({big_surv_df <- split_df %>%
+                 dplyr::group_by(id_space) %>%
+                 dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                                            include_init = TRUE,
+                                                                            grow_length = TRUE)) %>%
+                 dplyr::ungroup()},
+               NA)
+  expect_error({big_surv_df <- split_df %>%
+    dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                               include_init = TRUE,
+                                                               grow_length = TRUE)) }
+    )
 
-  res <- convert_to_surveillance(space_coord, time_coord, list_of_dfs,
-                                 n_predict = 1,
-                                 return_last_only = TRUE,
-                                 grow_length = TRUE) %>%
-    dplyr::arrange(time, zcta_str)
-
-  expect_true(is.data.frame(res))
-  expect_equal(res$obs, c(3.80203, 3.80401, 3.80746,
-                              4.80203, 4.80401, 4.80746,
-                              5.80203, 5.80401, 5.80746))
-
-  check_all_coord_types(space_coord, time_coord, list_of_dfs,
-                        return_last_only = TRUE,
-                        grow_length = TRUE)
-
-  check_all_coord_types(space_coord, time_coord, list_of_dfs,
-                        return_last_only = TRUE,
-                        grow_length = FALSE)
+  # We can override the error with check_space_ids = FALSE
+  expect_error({split_df %>%
+    dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                               include_init = FALSE,
+                                                               grow_length = FALSE,
+                                                               check_space_ids = FALSE)) },
+    NA)
 })
 
-test_that("Works with n_predict != 1", {
-  res <- convert_to_surveillance(space_coord, time_coord, list_of_dfs,
-                                 n_predict = 2) %>%
-    loop_over(space_coord, time_coord, ., function(x) dplyr::arrange(x, time, zcta_str))
-  expect_equal(res$`5`$obs, c(5.80203, 5.80401, 5.80746,
-                              5.80203, 5.80401, 5.80746))
-  expect_equal(res$`2`, NA)
-  check_all_coord_types(space_coord, time_coord, list_of_dfs,
-                        n_predict = 2)
+test_that("Works for n_predict = 3, model_arity = 'multi'", {
+  base_df <- window_idtime(spacetime_data, min_train = 5, max_train = 6, n_predict = 3, model_arity = "multi") %>%
+    rowmute(aug_data = dplyr::mutate(curr_data, .fitted = rnorm(dplyr::n())))
 
-  res <- convert_to_surveillance(space_coord, time_coord, list_of_dfs,
-                                n_predict = 2, grow_length = TRUE) %>%
-    loop_over(space_coord, time_coord, ., function(x) dplyr::arrange(x, time, zcta_str))
-  expect_equal(res$`5`$obs, c(3.80203, 3.80401, 3.80746,
-                              4.80203, 4.80401, 4.80746,
-                              5.80203, 5.80401, 5.80746,
-                              5.80203, 5.80401, 5.80746))
-  expect_equal(res$`2`, NA)
-  check_all_coord_types(space_coord, time_coord, list_of_dfs,
-                        n_predict = 2, grow_length = TRUE)
+  surv_df <- base_df %>%
+    dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                               include_init = FALSE,
+                                                               grow_length = FALSE))
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 6)
+  check_surv(surv_df$surv_data[-1], surv_df$aug_data[[2]], .id_time = 7)
+  check_lengths(surv_df$surv_data, c(30, 40, 50))
 
-  res <- convert_to_surveillance(space_coord, time_coord, list_of_dfs,
-                                 n_predict = 2, grow_length = TRUE,
-                                 return_last_only = TRUE) %>%
-    dplyr::arrange(time, zcta_str)
-  expect_true(is.data.frame(res))
-  expect_equal(res$obs, c(3.80203, 3.80401, 3.80746,
-                          4.80203, 4.80401, 4.80746,
-                          5.80203, 5.80401, 5.80746,
-                          5.80203, 5.80401, 5.80746))
-  check_all_coord_types(space_coord, time_coord, list_of_dfs,
-                        n_predict = 2, grow_length = TRUE,
-                        return_last_only = TRUE)
+  surv_df <- base_df %>%
+    dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                               include_init = TRUE,
+                                                               grow_length = FALSE))
 
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 2)
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 6)
+  check_surv(surv_df$surv_data[-1], surv_df$aug_data[[2]], .id_time = 7)
+  check_lengths(surv_df$surv_data, c(80, 90, 90))
 
-  res <- convert_to_surveillance(space_coord, time_coord, list_of_dfs,
-                                 n_predict = 2, grow_length = FALSE,
-                                 return_last_only = TRUE) %>%
-    dplyr::arrange(time, zcta_str)
-  expect_true(is.data.frame(res))
-  expect_equal(res$obs, c(5.80203, 5.80401, 5.80746,
-                          5.80203, 5.80401, 5.80746))
-  check_all_coord_types(space_coord, time_coord, list_of_dfs,
-                        n_predict = 2, grow_length = FALSE,
-                        return_last_only = TRUE)
+  surv_df <- base_df %>%
+    dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                               include_init = FALSE,
+                                                               grow_length = TRUE))
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 6)
+  check_surv(surv_df$surv_data[-1], surv_df$aug_data[[2]], .id_time = 7)
+  check_lengths(surv_df$surv_data, c(30, 40, 50))
+
+  surv_df <- base_df %>%
+    dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                               include_init = TRUE,
+                                                               grow_length = TRUE))
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 2)
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 6)
+  check_surv(surv_df$surv_data[-1], surv_df$aug_data[[2]], .id_time = 7)
+  check_lengths(surv_df$surv_data, c(80, 90, 100))
 })
 
+test_that("Works for n_predict = 3, model_arity = 'uni'", {
+  base_df <- window_idtime(spacetime_data, min_train = 5, max_train = 6, n_predict = 3, model_arity = "uni") %>%
+    rowmute(aug_data = dplyr::mutate(curr_data, .fitted = rnorm(dplyr::n())))
 
-# start_times <- 1:12
-# fin_times <- start_times + 1L
-# labels <- paste0("X", start_times) #sapply(start_times + 64, intToUtf8)
-# time_coord <- data.frame(time_labels = labels,
-#                          time = start_times,
-#                          fin_time = fin_times,
-#                          stringsAsFactors = FALSE) %>%
-#   gridcoord::gc_gridcoord()
-#
-# data_for_scan <- gridcoord::gc_expand(time_coord, space_coord)
-# data_for_scan$baseline <- 4.3
-# data_for_scan$baseline2 <- 6
-# # is_outbreak <- #space2 and space3, 10-13
-# is_outbreak <- data_for_scan$zcta_str %in% c("80401", "80203") & data_for_scan$time >= 9
-# data_for_scan$observed <- floor(data_for_scan$baseline + ifelse(is_outbreak, 4, 0))
-# null_f <- function(space_coord, time_coord, data_for_model) {
-#   return(list(fit = 0, data = data_for_model))
-# }
-# all_ret <- loop_model(space_coord, time_coord, data_for_scan, "observed", null_f, use_cache = FALSE)
-# all_data_for_scan <- all_ret[[2]]
-# all_yhats <- lapply(all_data_for_scan,
-#                     function(x) {
-#                       if (identical(x, NA)) {
-#                         x
-#                       } else {
-#                         x[, c("time_labels", "zcta_str", "baseline", "baseline2")]
-#                       }
-#                     })
-#
+  big_surv_df <- base_df %>%
+    dplyr::group_by(id_space) %>%
+    dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                               include_init = FALSE,
+                                                               grow_length = FALSE)) %>%
+    dplyr::ungroup()
+  surv_df <- big_surv_df %>%
+    dplyr::filter(id_space == sample.int(10, size = 1))
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 6)
+  check_surv(surv_df$surv_data[-1], surv_df$aug_data[[2]], .id_time = 7)
+  check_lengths(surv_df$surv_data, c(3, 4, 5))
 
+  big_surv_df <- base_df %>%
+    dplyr::group_by(id_space) %>%
+    dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                               include_init = TRUE,
+                                                               grow_length = FALSE)) %>%
+    dplyr::ungroup()
+  z <- sample.int(10, size = 1)
+  surv_df <- big_surv_df %>%
+    dplyr::filter(id_space == z)
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 2)
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 6)
+  check_surv(surv_df$surv_data[-1], surv_df$aug_data[[2]], .id_time = 7)
+  check_lengths(surv_df$surv_data, c(8, 9, 9))
+
+  big_surv_df <- base_df %>%
+    dplyr::group_by(id_space) %>%
+    dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                               include_init = FALSE,
+                                                               grow_length = TRUE)) %>%
+    dplyr::ungroup()
+
+  surv_df <- big_surv_df %>%
+    dplyr::filter(id_space == sample.int(10, size = 1))
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 6)
+  check_surv(surv_df$surv_data[-1], surv_df$aug_data[[2]], .id_time = 7)
+  check_lengths(surv_df$surv_data, c(3, 4, 5))
+
+  big_surv_df <- base_df %>%
+    dplyr::group_by(id_space) %>%
+    dplyr::mutate(surv_data = calculate_surveillance_residuals(aug_data, split_id,
+                                                               include_init = TRUE,
+                                                               grow_length = TRUE)) %>%
+    dplyr::ungroup()
+  surv_df <- big_surv_df %>%
+    dplyr::filter(id_space == sample.int(10, size = 1))
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 2)
+  check_surv(surv_df$surv_data, surv_df$aug_data[[1]], .id_time = 6)
+  check_surv(surv_df$surv_data[-1], surv_df$aug_data[[2]], .id_time = 7)
+  check_lengths(surv_df$surv_data, c(8, 9, 10))
+})

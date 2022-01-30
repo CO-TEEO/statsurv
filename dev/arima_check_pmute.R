@@ -33,6 +33,7 @@ make_xreg2 <- function(data_for_model) {
 
 model_arima <- function(df, xreg) {
     Sys.sleep(0.1)
+
     fit_arima <- forecast::Arima(df$yp,
                                  order = c(1,1,0),
                                  method = "ML",
@@ -42,6 +43,22 @@ model_arima <- function(df, xreg) {
     return(fit_arima)
 }
 
+model_arima_tidy <- function(df) {
+    Sys.sleep(0.1)
+    if (nrow(df) <= 40) {
+        f <- yp ~ id_time
+    } else {
+        f <- yp ~ id_time + month_36
+    }
+    fit_arima <- arima_tidy(f,
+                            data = df,
+                            order = c(1, 1, 0),
+                            method = "ML",
+                            include.mean = TRUE, # include intercept
+                            transform.pars = FALSE)
+
+    fit_arima
+}
 # Ok, this is what I want to make work.
 # The question is...how?
 
@@ -57,21 +74,18 @@ arima_data <- arima_data %>%
     dplyr::mutate(yp = y + ifelse(id_time > knot, (id_time - knot) * 0.2, 0))
 
 
-nested_arima_data <- window_spacetime(arima_data, min_train = 20,
+nested_arima_data <- window_idtime(arima_data, min_train = 20,
                                       max_train = Inf, n_predict = 1, model_arity = "uni")
 prepped_arima_data <- nested_arima_data %>%
-    pmute(curr_data = mutate(curr_data, month_36 = pmax(id_time - 36, 0)),
-          data_for_model = prep_data_for_model(curr_data, id_time, n_predict = 1,
-                                               outcome_col = "yp",prediction_strategy = "truncate"),
-          xreg = make_xreg(data_for_model))
+    rowmute(curr_data = mutate(curr_data, month_36 = pmax(id_time - 36, 0))) %>%
+    rowmute(data_for_model = prepare_prediction_data(curr_data, yp, split_id, prep_strategy = "truncate"))
 
 handlers(global = TRUE)
 model_fits <- prepped_arima_data %>%
-    pmute(fit = model_arima(data_for_model, xreg))
+    rowmute(fit = model_arima_tidy(data_for_model))
 
 model_yhats <- model_fits %>%
-    pmute(xreg2 = make_xreg2(curr_data),
-          aug_data = extract_yhat(fit, curr_data, xreg2))
+    rowmute(aug_data = extract_yhat(fit, curr_data))
 
 
 source("tests/testthat/cdc_se_calc.R")

@@ -45,6 +45,8 @@ window_idtime <- function(spacetime_data, min_train,
                           max_train = Inf, n_predict = 1,
                           model_arity = c("multi", "uni")) {
 
+  #TOOD(): Add a "step" argument, so we can run every n steps
+
   # Arg checks
   spacetime_data <- validate_spacetime_data(spacetime_data)
   model_arity <- match.arg(model_arity)

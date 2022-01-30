@@ -2,43 +2,59 @@
 % Please edit documentation in R/convert_to_surveillance.R
 \name{calculate_surveillance_residuals}
 \alias{calculate_surveillance_residuals}
-\title{Convert a set of ordinary predictions into surveillance predictions}
+\title{Combine the most recent data points from a sequence of data frames}
 \usage{
 calculate_surveillance_residuals(
-  aug_datas,
-  time_ids,
-  n_predict,
-  grow_length = FALSE
+  list_of_dataframes,
+  split_ids,
+  grow_length = FALSE,
+  include_init = FALSE,
+  check_space_ids = TRUE
 )
 }
 \arguments{
-\item{n_predict}{For each dataframe in \code{list_of_dataframes}, how many time points were \emph{not} used
-in fitting the model?  Can be a scalar, a vector the same length as \code{list_of_dataframes}, or
-\code{NULL} (see Details).}
+\item{list_of_dataframes}{A list of data frames or data frame extensions, organized from oldest
+to newest. Each  data frame must includes columns 'id_space' and 'id_time' that are each a set
+of consecutive integers. The column 'id_time' identifies the time point associated with each
+row, with lower numbers being earlier and higher numbers being later. The column 'id_space'
+identifies the spatial location or area associated with each row, but no meaning or order is
+ascribed to the values.}
+
+\item{split_ids}{A vector the same length of \code{list_of_dataframes}. Each entry should be the value
+of \code{id_time} that marks the begining of the prediction data in each data frame.}
 
 \item{grow_length}{Boolean. Should the size of the returned dataframes increase as the number of
 available surveillance predictions increase?}
 
-\item{list_of_dataframes}{A list of data.frames, organized from oldest to newest. Each data.frame
-should represent predictions or fitted values from a model trained on a subset of the data in
-the data.frame.  Each dataframe must contain columns corresponding to \code{space_coord} and
-\code{time_coord}, as well as 1 or more columns containing the data of interest.}
+\item{include_init}{Boolean. Should the output include time points that were always used in
+fitting the model and never had predictions generated for them? If \code{include_init} is TRUE and
+\code{grow_length} is false, then the dimensions of the returned data frames are all identical to
+the size of the input data frames.}
 
-\item{return_last_only}{Boolean. Should the function return only the predictions for the last
-entry in \code{list_of_dataframes}, or for all entries?}
+\item{check_space_ids}{Boolean. Should the function throw an error if the values of \code{id_space} in
+each data frame are not the same. Defaults to TRUE, and you should use caution before
+overriding.}
 }
 \value{
-If \code{return_last_only = TRUE}, then a single dataframe giving the surveillance predictions
-for the last entry in \code{list_of_dataframes}. If \code{return_last_only = FALSE}, then a list of
-dataframes giving the surveillance predictions for every entry in \code{list_of_dataframes}. If
-\code{grow_length = FALSE}, then surveillance predictions will never be reported for a time point
-not included in the corresponding dataframe in \code{list_of_dataframes}.  If \code{grow_lenth = TRUE},
-then each data frame will contain all of the surveillance predictions calculated up to that
-point.
+A list of data frames giving the surveillance predictions for every entry in
+\code{list_of_dataframes}. If \code{grow_length = FALSE}, then surveillance predictions will never be
+reported for a time point not included in the corresponding dataframe in \code{list_of_dataframes}.
+If \code{grow_lenth = TRUE}, then each data frame will contain all of the surveillance predictions
+calculated up to that point. If \code{include_init = TRUE}, then each data frame will also include
+data points that never had any predictions generated for them.
 }
 \description{
-Takes a set of data predicted by a model and removes all the data points that were
-used in fitting the model.
+In statistical surveillance, "surveillance residuals" are defined as the difference
+between observed data for a new time period and the preidctions from a model fit using previous
+time periods. In theory, examining surveillance residuals should allow statistical methods to
+detect outbreaks or clusters more rapidly, since the model used to predict baseline estimates
+is not affected by any current outbreaks. In practice, it is still an open question whether
+using surveillance residuals over ordinary residuals provides any appreciable benefit.
+
+\code{calculate_surveillance_residuals} takes a set of data frames and combines the most recent time
+period or time periods from each one. If the data frames contain the estimates from sequentially
+fitting a model, then the new set of data frames contains the surveillance residuals from the
+series of model fits.
 }
 \details{
 Unlike ordinary model predictions, which are reported for all data points, surveillance
@@ -48,59 +64,50 @@ used to calculate the model fit, but model predictions were generated for time p
 \eqn{0} through \eqn{t}, then the only surveillance predictions would be at time point
 \eqn{t}.
 
-Given a list of ordinary model predictions, from the same model fit sequentially on different
-sets of data, \code{convert_to_surveillance} combines surveillance predictions from multiple model
-fits. For each data frame in \code{list_of_dataframes}, the data is split into time points that
-were used to calculate the model fit and time points that were not. No changes are made to the
-data for the time points not used to calculate the model fit. For all other time points, the
-data is either replaced with surveillance predictions made at earlier time points, or removed
-the data if no predictions are available.
+While \code{calculate_surveillance_residuals} can be used on any list of data frames, it is
+designed to used on a series of  predictions from a model fit sequentially on a growing set of
+data. Given a list of ordinary model predictions, from the same model fit sequentially on
+different sets of data, \code{convert_to_surveillance} combines surveillance predictions from
+multiple model fits.
 
-The split into time points that were and were not used in calculating the model fit is
-controlled by the paramater \code{n_predict}. If \code{n_predict = n}, then we assume that in each data
-frame, the most recent \code{n} time points were not used in the model fit. If \code{n_predict = NULL},
-then we assume that all time points in a dataframe that are not contained in any earlier
-dataframes were not used in fitting the model.
+If the same time period has predictions generated for it more than once, only the most recent
+value is reported.
 }
 \examples{
 library("scanstatistics")
 library("magrittr")
-library("gridcoord")
-library("sf")
 data(NM_popcas)
-NM_popcas$county <- as.character(NM_popcas$county)
-nm_county_coord <- statsurv::nm_county_coord
-year_coord <- data.frame(year = 1973:1991)
 
-glm_func <- function(space_coord, time_coord, data_for_model) {
-  mod <- glm(count ~ year,
-             family = poisson(link = "log"),
-             offset = log(population),
-             data = data_for_model)
-  return(list(fit = mod,
-              data = data_for_model))
-}
+# Generate a series of model predictions, each time including the data from another year:
+spacetime_data <- NM_popcas \%>\%
+  dplyr::mutate(id_time = year - min(year),
+                id_space = as.numeric(factor(county)))
 
-fits_and_data <- loop_model(nm_county_coord, year_coord, NM_popcas,
-                            outcome_col = "count",
-                            path_to_model = glm_func)
-all_fits <- fits_and_data[[1]]
-all_data <- fits_and_data[[2]]
+windowed_data <- spacetime_data \%>\%
+  window_idtime(min_train = 5, max_train = 5, n_predict = 1)
 
-all_yhats <- loop_extract_yhat(nm_county_coord, year_coord,
-                               all_fits, all_data,
-                               yhat_extractor_name = "extract",
-                               use_surveillance_residuals = FALSE)
+model_res <- windowed_data \%>\%
+  rowmute(training_data = prepare_prediction_data(curr_data, count, split_id),
+          model_fit = glm(count ~ year, family = poisson(),
+                          offset = log(population), data = training_data),
+          model_predictions = extract_yhat(model_fit, newdata = curr_data))
+# The sequential model predictions are now stored in the model_res$model_predictions
 
-# Use convert_to_surveillance to convert into surveillance predictions,
-# allowing us to create surveillance residuals
-convert_to_surveillance(nm_county_coord, year_coord, all_yhats,
-                        n_predict = 1)
+# Use convert_to_surveillance to take the last time period from each model prediction
+calculate_surveillance_residuals(model_res$model_predictions,
+                                 model_res$split_id)
 
-# Use grow_length = TRUE, return_last_only = TRUE
-# to generate a single data frame with all the surveillance predictions:
-convert_to_surveillance(nm_county_coord, year_coord, all_yhats,
-                        n_predict = 1,
-                        grow_length = TRUE,
-                        return_last_only = TRUE)
+# Repeat with grow_length = FALSE, init = TRUE,
+# so the dimensions of the output match the dimensions of the input
+calculate_surveillance_residuals(model_res$model_predictions,
+                                 model_res$split_id,
+                                 grow_length = FALSE,
+                                 include_init = TRUE)
+
+# We can use the function inside mutate to add a column to our data frame
+model_res \%>\%
+  dplyr::mutate(surveillance_predictions = calculate_surveillance_residuals(model_predictions,
+                                                                            split_id,
+                                                                            grow_length = FALSE,
+                                                                            include_init = TRUE))
 }
