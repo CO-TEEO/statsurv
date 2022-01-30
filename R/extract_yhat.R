@@ -79,17 +79,17 @@ extract_yhat <- function(fit, newdata, ...) {
 }
 
 #' @export
-extract_yhat.default <- function(fit, newdata, ...) {
-  browser()
-  generics::augment(fit, newdata = newdata, type.predict = "response", ...)
+extract_yhat.arima_tidy <- function(fit, newdata, ...) {
+  # Having another method dispatch was confusing roxygen.
+  # So we're calling this directly.
+  augment.arima_tidy(fit, newdata, ...)
 }
 
 #' @export
-extract_yhat.arima_tidy <- function(fit, newdata, ...) {
-  browser()
-  # Need this function to properly dispatch
-  UseMethod("augment", fit)
+extract_yhat.default <- function(fit, newdata, ...) {
+  generics::augment(fit, newdata = newdata, type.predict = "response", ...)
 }
+
 
 # lm, glm, and merMod should be handled by broom and broom.mixed
 # So the key ones to handle are INLA and forecast_ARIMA, if I can.

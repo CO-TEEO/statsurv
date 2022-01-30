@@ -13,10 +13,12 @@
 \item{fit}{An ARIMA model fit object.}
 
 \item{newdata}{A data frame containing the data that should be used to predict the fitted values.
-Must have all of the covariates used by the model fit object to calculate fitted values. The first \code{n} rows should be exactly the data used to fit the model, and any additional rows should correspond to the number of steps ahead that predictions should be generated.}
+Must have all of the covariates used by the model fit object to calculate fitted values. The
+first \code{n} rows should be exactly the data used to fit the model, and any additional rows should
+correspond to the number of steps ahead that predictions should be generated.}
 
 \item{resp_var}{The column in \code{newdata} containing the time series data the model was fitted on.
-This should be specified as bare text (no quotes).}
+Only used for \code{stats::arima} models. The column should be specified as bare text (no quotes).}
 
 \item{newxreg}{A matrix of covariate information containing both the values of \code{xreg} used to
 originally fit the model, and any new values of xreg to be used for prediction. IMPORTANT:
@@ -33,7 +35,7 @@ values. Some models may also return additional columns, such as \code{.resid}. A
 \description{
 Methods for extracting fitted values from ARIMA models, including those fit using
 \code{\link[stats:arima]{stats::arima}}, \code{\link[forecast:Arima]{forecast::Arima}}, or
-\code{\link{arima2}}.
+\code{\link{arima_tidy}}.
 
 Compared to other types of models, extrating fitted values from Arima models is rather fiddly. In
 particular, the \emph{order} of rows in \code{newdata} and \code{newxreg} is crucially important. If the ARIMA
@@ -56,11 +58,13 @@ fit with \code{stats::arima} do \emph{not} store this information, and so this i
 supplied to \code{extract_yhat} by through the parameters \code{newdata} and \code{resp_var}.
 
 \code{extract_yhat} can only be used to predict fitted values conditional on the data used to fit
-the model. Any covariates necessary to generate these forecasts must be provided as the last
-rows in \code{newxreg}. Although \code{newdata} is a required parameter to the functions, it is not used
-in generating the predictions, and only used to report the final result. This is done so that
-the output from \code{extract_yhat} is consistent with the output from \code{augment} and the broader
-Tidyverse, which uses data frames as the key interface for passing data between functions.
+the model. For \code{forecast::Arima} and \code{stats::arima}, any covariates necessary to generate these
+forecasts must be provided as the last rows in \code{newxreg}. For \code{arima_tidy}, the covariates must
+be provided as the last rows in \code{newdata}. Although \code{newdata} is note used for generating
+predictions for \code{forecast::Ariam} or \code{stats::arima}, it is still a required parameter to the
+functions, so that it can be used to report the final result. This is done so that the output
+from \code{extract_yhat} is consistent with the output from \code{augment} and the broader Tidyverse,
+which uses data frames as the key interface for passing data between functions.
 
 For a version of arima that is based entirely on data frames, see \code{\link{arima_tidy}}.
 }
