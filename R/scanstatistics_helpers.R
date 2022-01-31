@@ -153,13 +153,23 @@ space_coord_to_zones <- function(space_coord, max_k) {
 #'                          stringsAsFactors = FALSE)
 #' pivot_for_scan(df, "vals", "space", time_coord)
 
+
 pivot_for_scan <- function(spacetime_data, value_col) {
   #TODO(): Should I allow spacetime data to be an sf?
-  x <- spacetime_data[, c("id_space", "id_time", value_col)] %>%
+
+
+  x <- spacetime_data %>%
+    dplyr::transmute(id_space, id_time,
+                     y = {{value_col}})
+  if (ncol(x) == 2) { # Hack to deal with the case when value_col = NULL
+    return(NULL)
+  }
+    # dplyr::select(id_space, id_time, {{value_col}}) %>%
+  x <- x %>%
     dplyr::arrange(id_time, id_space) %>%
     tidyr::pivot_wider(id_cols = id_time,
                        names_from = id_space,
-                       values_from = dplyr::all_of(value_col)) %>%
+                       values_from = y) %>%
     dplyr::arrange(id_time) %>%
     as.data.frame()
   rownames(x) <- x$id_time
