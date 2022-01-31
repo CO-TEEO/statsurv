@@ -30,7 +30,10 @@ lm_res <- prepped_data %>%
 lm_yhat <- lm_res %>%
   rowmute(aug_data = extract_yhat(fits, curr_data))
 
-collapsed_data <- collapse_if_exploded(lm_yhat)
+collapsed_data <- lm_yhat %>%
+  group_by(id_time) %>%
+  collapse_all()
+
 
 alarm_res <- collapsed_data %>%
   rowmute(alarm = parallel_cusum_gaussian2(aug_data, "y", ".fitted"))

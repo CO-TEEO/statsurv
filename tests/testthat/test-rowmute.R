@@ -91,8 +91,8 @@ test_that("rowmute works on record-style objects", {
   }
 
   format.vctrs_rational <- function(x, ...) {
-    n <- field(x, "n")
-    d <- field(x, "d")
+    n <- vctrs::field(x, "n")
+    d <- vctrs::field(x, "d")
 
     out <- paste0(n, "/", d)
     out[is.na(n) | is.na(d)] <- NA

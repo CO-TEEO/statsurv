@@ -98,6 +98,9 @@ calculate_surveillance_residuals <- function(list_of_dataframes,
                                              grow_length = FALSE,
                                              include_init = FALSE,
                                              check_space_ids = TRUE) {
+  #TODO(): Is this even what I want this function to look like? I'm leaving a lot to convention
+  # Is there an alternative where I pass a data frame with id_space, id_time, and nested data frames?
+  # That's not conceptually easier, but it is safer.
 
   # Arg checks
   list_of_dataframes <- purrr::map(list_of_dataframes, validate_spacetime_data)
