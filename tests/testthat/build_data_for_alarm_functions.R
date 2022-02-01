@@ -36,7 +36,10 @@ spacetime_data_lg <- data.frame(id_space = rep(1:9, 4),
   dplyr::mutate(cases = dplyr::case_when(id_space %in% c(1, 2, 4, 5) & id_time %in% c(3,4) ~ 5,
                                          id_space %in% c(8,9) & id_time %in% c(3, 4) ~ 3,
                                          TRUE ~ 2),
-                .fitted = 2)
+                .fitted = 2,
+                pop = id_space * 6,
+                probs = 0.1,
+                thetas = 1.5)
 outbreak_sp_lg <- c(1, 2, 4, 5)
 outbreak_tm_lg <- c(3, 4)
 wide_cases_lg <- matrix(2, nrow = 4, ncol = 9)
@@ -44,3 +47,6 @@ wide_cases_lg[outbreak_tm_lg, outbreak_sp_lg] <- 5
 wide_cases_lg[c(3, 4), c(8, 9)] <- 3
 
 wide_baseline_lg <- matrix(2, nrow = 4, ncol = 9)
+wide_probs_lg <- matrix(0.1, nrow = 4, ncol = 9)
+wide_thetas_lg <- matrix(1.5, nrow = 4, ncol = 9)
+wide_pop_lg <- matrix(spacetime_data_lg$pop, nrow = 4, ncol = 9, byrow = TRUE)

@@ -118,7 +118,7 @@ scan_cusum_poisson <- function(wide_cases,
     }
     ### Argument Checks #########################################
     if (is.list(key_matrix)) {
-        key_matrix <- build_key_matrix(key_matrix)
+        key_matrix <- zones_to_key_matrix(key_matrix)
     }
 
     ### The actual computation #########################
@@ -136,7 +136,7 @@ scan_cusum_poisson <- function(wide_cases,
     incontrol_zone_list <- mat_to_list(incontrol_zone_mat) # Convert matrices to lists for speed
     drift_zone_list <- mat_to_list(drift_zone_mat)
 
-    zones <- build_zones(key_matrix)
+    zones <- key_matrix_to_zones(key_matrix)
     scan_res <- single_scan(wide_cases,
                             key_matrix,
                             drift_zone_list,
