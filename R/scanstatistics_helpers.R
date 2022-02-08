@@ -176,16 +176,39 @@ pivot_for_scan <- function(spacetime_data, value_col) {
   x$id_time <- NULL
   return(as.matrix(x))
 }
+#
+# unpivot_parallel_alarms <- function(alarm_data, spacetime_data, value_col = ".action_level") {
+#   new_data <- as.data.frame(alarm_data) %>%
+#     magrittr::set_colnames(seq_len(ncol(alarm_data))) %>%
+#     dplyr::mutate(id_time = seq_len(nrow(alarm_data))) %>%
+#     tidyr::pivot_longer(-id_time, names_to = "id_space", values_to = value_col,
+#                         names_transform = list("id_space" = as.integer))
+#   return(dplyr::left_join(spacetime_data, new_data, by = c("id_space", "id_time")))
+# }
 
-unpivot_parallel_alarms <- function(alarm_data, spacetime_data, value_col = ".action_level") {
-  new_data <- as.data.frame(alarm_data) %>%
-    magrittr::set_colnames(seq_len(ncol(alarm_data))) %>%
-    dplyr::mutate(id_time = seq_len(nrow(alarm_data))) %>%
-    tidyr::pivot_longer(-id_time, names_to = "id_space", values_to = value_col,
-                        names_transform = list("id_space" = as.integer))
-  return(dplyr::left_join(spacetime_data, new_data, by = c("id_space", "id_time")))
+unpivot_parallel_alarms <- function(parallel_alarm_res, values_to = ".action_level",
+                                    row_names = NULL, col_names = NULL) {
+  df <- as.data.frame(parallel_alarm_res)
+  if (!is.null(row_names)) {
+    rownames(df) <- row_names
+  } else if (is.null(rownames(parallel_alarm_res))) {
+    rownames(df) <- seq_len(nrow(df))
+  }
+
+  if (!is.null(col_names)) {
+    colnames(df) <- col_names
+  } else if (is.null(colnames(parallel_alarm_res))) {
+    colnames(df) <- seq_len(ncol(df))
+  }
+
+  df %>%
+    tibble::rownames_to_column("id_time") %>%
+    tidyr::pivot_longer(cols = -id_time, names_to = "id_space", values_to = values_to) %>%
+    dplyr::mutate(id_space = as.numeric(id_space),
+                  id_time = as.numeric(id_time)) %>%
+    tibble::as_tibble() %>%
+    validate_spacetime_data()
 }
-
 
 #' @title Ensure that zone information is repesented as a list
 #'

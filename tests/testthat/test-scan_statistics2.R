@@ -239,23 +239,23 @@ test_that("parallel_cusum_poisson matches", {
                                               n_mcsim = n_sim,
                                               scaling = 1.25)
   expect_equal(destandardize(scanres_gen), scanres)
+})
+
+
+test_that("parallel_cusum_gaussian matches", {
+  scanres <- parallel_cusum_gaussian(wide_cases_lg, wide_baseline_lg,
+                                     mean = 0,
+                                     sigma = c(1:9))
+  scanres_gen <- standardized_alarm_functions("parallel_cusum_gaussian",
+                                              wide_cases_lg,
+                                              NULL,
+                                              wide_baseline_lg,
+                                              n_mcsim = n_sim,
+                                              mean = 0,
+                                              sigma = 1:9)
+  expect_equal(destandardize(scanres_gen), scanres)
 
 })
-#
-# test_that("parallel_cusum_gaussian matches", {
-#   scanres <- parallel_cusum_gaussian(wide_cases_lg, wide_baseline_lg,
-#                                      mean = 0,
-#                                      sigma = c(1:9))
-#   scanres_gen <- standardized_alarm_functions("parallel_cusum_gaussian",
-#                                               wide_cases_lg,
-#                                               NULL,
-#                                               wide_baseline_lg,
-#                                               n_mcsim = n_sim,
-#                                               mean = 0,
-#                                               sigma = 1:9)
-#   expect_equal(destandardize(scanres_gen), scanres)
-#
-# })
 #
 # test_that("parallel_shewhart_gaussian matches", {
 #   scanres <- parallel_shewhart_gaussian(wide_cases_lg, wide_baseline_lg,

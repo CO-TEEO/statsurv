@@ -25,7 +25,7 @@ scan_eb_poisson2 <- function(data, outcome_col, zones, baseline_col = NULL, pop_
                                                n_mcsim = n_mcsim, gumbel = gumbel,
                                                max_only = max_only)
 
-  standardize_scan_alarm(alarm_res, zones)
+  standardize_scan_alarm(alarm_res, zones, gumbel = gumbel)
 }
 
 scan_eb_poisson_fast2 <- function(data, outcome_col, zones, baseline_col, n_mcsim = 10) {
@@ -85,7 +85,7 @@ scan_eb_negbin2 <- function(data, outcome_col, zones, baseline_col, theta_col = 
   alarm_res <- scanstatistics::scan_eb_negbin(wide_cases, zones, wide_baseline,
                                               thetas = wide_theta, type = type,
                                               n_mcsim = n_mcsim, gumbel = gumbel, max_only = max_only)
-  standardize_scan_alarm(alarm_res, zones)
+  standardize_scan_alarm(alarm_res, zones, gumbel = gumbel)
 }
 
 
@@ -124,7 +124,7 @@ scan_eb_zip2 <- function(data, outcome_col, zones,
                                            wide_baseline, wide_probs, wide_pop,
                                            n_mcsim = n_mcsim, gumbel = gumbel,
                                            max_only = max_only, rel_tol = rel_tol)
-  standardize_scan_alarm(alarm_res, zones)
+  standardize_scan_alarm(alarm_res, zones, gumbel = gumbel)
 }
 
 scan_pb_poisson2 <- function(data, outcome_col, zones, pop_col = NULL, n_mcsim = 10, gumbel = FALSE,
@@ -144,7 +144,7 @@ scan_pb_poisson2 <- function(data, outcome_col, zones, pop_col = NULL, n_mcsim =
   alarm_res <- scanstatistics::scan_pb_poisson(wide_cases, zones, wide_pop,
                                                n_mcsim = n_mcsim, gumbel = gumbel,
                                                max_only = max_only)
-  standardize_scan_alarm(alarm_res, zones)
+  standardize_scan_alarm(alarm_res, zones, gumbel = gumbel)
 }
 
 scan_permutation2 <- function(data, outcome_col, zones, pop_col = NULL, n_mcsim = 0, gumbel = FALSE,
@@ -165,7 +165,7 @@ scan_permutation2 <- function(data, outcome_col, zones, pop_col = NULL, n_mcsim 
   alarm_res <- scanstatistics::scan_permutation(wide_cases, zones, population = wide_pop,
                                                 n_mcsim = n_mcsim, gumbel = gumbel,
                                                 max_only = max_only)
-  standardize_scan_alarm(alarm_res, zones)
+  standardize_scan_alarm(alarm_res, zones, gumbel = gumbel)
 }
 
 scan_bayes_negbin2 <- function(data, outcome_col, zones, baseline_col = NULL, pop_col = NULL,
@@ -223,12 +223,20 @@ scan_cusum_poisson2 <- function(data, outcome_col, zones, baseline_col, scaling 
   standardize_scan_alarm(alarm_res, zones)
 }
 
-standardize_scan_alarm <- function(alarm_res, zones) {
+standardize_scan_alarm <- function(alarm_res, zones, gumbel = FALSE) {
   attr(alarm_res, "alarm_type") <- "scan"
   alarm_res$zone_info <- zones
   alarm_res$observed$action_level <- alarm_res$observed$score
   alarm_res$MLC$action_level <- alarm_res$MLC$score
   alarm_res$replicates$action_level <- alarm_res$replicates$score
+  alarm_res$observed$mc_pvalue <- scanstatistics:::mc_pvalue(alarm_res$observed$action_level,
+                                                             alarm_res$replicates$action_level)
+
+  if (gumbel) {
+    alarm_res$observed$gumbel_pvalue <-
+      scanstatistics:::gumbel_pvalue(alarm_res$observed$action_level,
+                                     alarm_res$replicates$action_level)$pvalue
+  }
   alarm_res
 }
 
