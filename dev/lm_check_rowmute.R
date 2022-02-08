@@ -36,5 +36,17 @@ collapsed_data <- lm_yhat %>%
 
 
 alarm_res <- collapsed_data %>%
-  rowmute(alarm = parallel_cusum_gaussian2(aug_data, "y", ".fitted"))
+  rowmute(alarm = parallel_cusum_gaussian2(aug_data, y, .fitted))
 
+q <- alarm_res %>%
+  select(id_time, alarm) %>%
+  unnest(alarm, names_repair = tidyr_legacy)
+# Ok, I quite don't like how the unnesting doesn't really work.
+# Maybe we need to re-name it?
+# That'd be a big change though .
+
+ggplot(q, aes(x = id_time1, y = .action_level, color = factor(id_space))) +
+  geom_point() +
+  geom_line() +
+  facet_wrap("id_time")
+# Ok, that looks about right.
