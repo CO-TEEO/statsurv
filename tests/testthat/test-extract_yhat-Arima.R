@@ -140,3 +140,18 @@ for (ind in seq_len(nrow(arima_combos))) {
   })
 }
 
+test_that("Works if n.ahead = 0", {
+  fit_stats_arima <- stats::arima(ac_newdata$y_ac2, order = c(2, 0, 0), xreg = newxreg2)
+  yhat_stats_arima <- extract_yhat(fit_stats_arima, ac_newdata, y_ac2)
+
+  fit_forecast <- forecast::Arima(ac_newdata$y_ac2, order = c(2, 0, 0), xreg = newxreg2)
+  yhat_forecast <- extract_yhat(fit_forecast, ac_newdata)
+
+  fit_arima_tidy <- arima_tidy(f2, data = ac_newdata, order = c(2, 0, 0))
+  yhat_arima_tidy <- extract_yhat(fit_arima_tidy, ac_newdata)
+
+  expect_equal(yhat_forecast$.fitted, as.numeric(fit_forecast$fitted))
+  expect_equal(yhat_forecast, dplyr::select(yhat_stats_arima, -.resid))
+  expect_equal(yhat_forecast, dplyr::select(yhat_arima_tidy, -.resid))
+})
+

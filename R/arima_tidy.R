@@ -218,12 +218,15 @@ augment.arima_tidy <- function(fit, newdata, ...) {
     stop("newdata must contain at least as many rows as was used to originally fit the model")
   }
   n_old <- length(fit$fitted)
-
-  only_newdata <- newdata[n_old + seq_len(n_ahead), , drop = FALSE]
-
-  new_predictions <- as.numeric(stats::predict(fit, only_newdata = only_newdata)$pred)
   old_predictions <- as.numeric(fit$fitted)
-  predictions <- c(old_predictions, new_predictions)
+
+  if (n_ahead > 0) {
+    only_newdata <- newdata[n_old + seq_len(n_ahead), , drop = FALSE]
+    new_predictions <- as.numeric(stats::predict(fit, only_newdata = only_newdata)$pred)
+    predictions <- c(old_predictions, new_predictions)
+  } else {
+    predictions <- old_predictions
+  }
   newdata$.fitted <- predictions
   resp <- gen_resp(fit$formula, newdata)
   newdata$.resid <- resp - newdata$.fitted

@@ -57,9 +57,36 @@
 #'   \code{\link{arima_tidy}} \code{\link{augment.arima_tidy}}
 #'
 #' @examples
+#' data("presidents_df")
+#' fit_stats_arima <- stats::arima(presidents_df$approval_rating, order = c(2, 0, 0))
+#' extract_yhat(fit_stats_arima, presidents_df, resp_var = approval_rating)
+#'
+#'
+#' fit_forecast  <- forecast::Arima(presidents_df$approval_rating, order = c(2, 0, 0))
+#' extract_yhat(fit_forecast, presidents_df)
+#' # We can extract fitted values and make predictions at the same time
+#' fit <- stats::arima(presidents_df$approval_rating[1:110], order = c(2, 0, 0))
+#' extract_yhat(fit, presidents_df, resp_var = approval_rating)
+#'
+#' # We can supply an external predictor as well
+#' fit <- stats::arima(presidents_df$approval_rating[1:110], order = c(2, 0, 0),
+#'                     xreg = as.matrix(presidents_df[1:110, "election_year", drop = FALSE]))
+#' extract_yhat(fit, presidents_df, resp_var = approval_rating,
+#'              newxreg = as.matrix(presidents_df[, "election_year", drop = FALSE]))
+#'
+#' # We can use arima_tidy to not have to generate xreg manually
+#' fit <- arima_tidy(approval_rating ~ election_year, order = c(2, 0, 0),
+#'                   data = presidents_df[1:110, ])
+#' extract_yhat(fit, presidents_df)
 extract_yhat.Arima <- function(fit, newdata, resp_var, newxreg = NULL, ...) {
   # We have to assume that the rows of newdata/newxreg are in order from earliest to latest.
 
+  stopifnot(inherits(fit, "Arima"),
+            is.data.frame(newdata),
+            is.null(newxreg) || is.matrix(newxreg))
+  if (missing(resp_var)) {
+    stop("`resp_var` is missing")
+  }
   #I'm not 100% sure if this should be data masking or tidy-selecting? so either select or transmute.
   # I think if we use transmute, we can match anything that's in the formula. So I should do that.
   yvar <- dplyr::transmute(newdata, {{resp_var}})[[1]]
@@ -67,8 +94,14 @@ extract_yhat.Arima <- function(fit, newdata, resp_var, newxreg = NULL, ...) {
   old_fitted <- yvar[1:n_old] - fit$residuals
   n_new <- nrow(newdata)
   n_ahead <- n_new - n_old
-  new_fitted <- predict(fit, n_ahead, newxreg = newxreg[n_old + seq_len(n_ahead), , drop = FALSE])
-  comb_fitted <- c(as.numeric(old_fitted), as.numeric(new_fitted$pred))
+  if (n_ahead > 0) {
+    new_fitted <- predict(fit, n_ahead, newxreg = newxreg[n_old + seq_len(n_ahead), , drop = FALSE])
+    comb_fitted <- c(as.numeric(old_fitted), as.numeric(new_fitted$pred))
+  } else if (n_ahead == 0) {
+    comb_fitted <- as.numeric(old_fitted)
+  } else {
+    stop("`newdata` must have at least as many rows as were used to originally fit the model")
+  }
   newdata$.fitted <- comb_fitted
   newdata$.resid <- yvar - comb_fitted
   newdata
@@ -78,19 +111,26 @@ extract_yhat.Arima <- function(fit, newdata, resp_var, newxreg = NULL, ...) {
 #' @rdname extract_yhat.Arima
 #' @export
 extract_yhat.forecast_ARIMA <- function(fit, newdata, newxreg = NULL, ...) {
-  n_ahead <- nrow(newdata) - length(fit$fitted)
-  if (missing(newxreg) || is.null(newxreg)) {
-    new_predictions <- as.numeric(
-      forecast::forecast(fit, h = n_ahead)$mean
-    )
-  } else {
-    rows_to_use <- seq(nrow(newxreg) - n_ahead + 1, nrow(newxreg))
-    new_predictions <- as.numeric(
-      forecast::forecast(fit, h = n_ahead, xreg = newxreg[rows_to_use, , drop = FALSE])$mean
-    )
-  }
   old_predictions <- as.numeric(fit$fitted)
-  predictions <- c(old_predictions, new_predictions)
+  n_ahead <- nrow(newdata) - length(fit$fitted)
+  if (n_ahead > 0) {
+    if (missing(newxreg) || is.null(newxreg)) {
+      new_predictions <- as.numeric(
+        forecast::forecast(fit, h = n_ahead)$mean
+      )
+    } else {
+      rows_to_use <- seq(nrow(newxreg) - n_ahead + 1, nrow(newxreg))
+      new_predictions <- as.numeric(
+        forecast::forecast(fit, h = n_ahead, xreg = newxreg[rows_to_use, , drop = FALSE])$mean
+      )
+    }
+    predictions <- c(old_predictions, new_predictions)
+  } else if (n_ahead == 0) {
+    predictions <- old_predictions
+  } else {
+    stop("`newdata` must have at least as many rows as were used to originally fit the model")
+  }
+
   newdata$.fitted <- predictions
   return(newdata)
 }
