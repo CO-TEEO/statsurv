@@ -1,11 +1,13 @@
 #' @title Combine the most recent data points from a sequence of data frames
 #'
 #' @description In statistical surveillance, "surveillance residuals" are defined as the difference
-#'   between observed data for a new time period and the preidctions from a model fit using previous
-#'   time periods. In theory, examining surveillance residuals should allow statistical methods to
-#'   detect outbreaks or clusters more rapidly, since the model used to predict baseline estimates
-#'   is not affected by any current outbreaks. In practice, it is still an open question whether
-#'   using surveillance residuals over ordinary residuals provides any appreciable benefit.
+#'   between observed data for a new time period and the predictions from a model fit using previous
+#'   time periods. The key difference from ordinary model residuals is that surveillance residuals
+#'   are never calculated for data points used to fit the model. In theory, examining surveillance
+#'   residuals should allow statistical methods to detect outbreaks or clusters more rapidly, since
+#'   the model used to predict baseline estimates is not affected by any current outbreaks. In
+#'   practice, it is still an open question whether using surveillance residuals over ordinary
+#'   residuals provides any appreciable benefit.
 #'
 #' `calculate_surveillance_residuals` takes a set of data frames and combines the most recent time
 #' period or time periods from each one. If the data frames contain the estimates from sequentially
@@ -18,8 +20,12 @@
 #'   row, with lower numbers being earlier and higher numbers being later. The column 'id_space'
 #'   identifies the spatial location or area associated with each row, but no meaning or order is
 #'   ascribed to the values.
+#' @param window_time_ids A vector the same length as `list_of_dataframes`. Each entry should be the
+#'   value of `id_time` associated with each data frame in `list_of_dataframes`. For example, if
+#'   `list_of_dataframes` contains model output, `window_time_ids` would be the time point when each
+#'   model was run, or the latest timepoint included in each model.
 #' @param split_ids A vector the same length of `list_of_dataframes`. Each entry should be the value
-#'   of `id_time` that marks the begining of the prediction data in each data frame.
+#'   of `id_time` that marks the beginning of the prediction data in each data frame.
 #' @param grow_length Boolean. Should the size of the returned dataframes increase as the number of
 #'   available surveillance predictions increase?
 #' @param include_init Boolean. Should the output include time points that were always used in
@@ -78,36 +84,42 @@
 #' # Use convert_to_surveillance to take the last time period
 #' # from each model prediction
 #' calculate_surveillance_residuals(model_res$model_predictions,
+#'                                  model_res$window_time_id,
 #'                                  model_res$split_id)
 #'
 #' # Repeat with grow_length = FALSE, init = TRUE,
 #' # so the dimensions of the output match the dimensions of the input
 #' calculate_surveillance_residuals(model_res$model_predictions,
+#'                                  model_res$window_time_id,
 #'                                  model_res$split_id,
 #'                                  grow_length = FALSE,
 #'                                  include_init = TRUE)
 #'
 #' # We can use the function inside mutate to add a column to our data frame
 #' model_res %>%
-#'   dplyr::mutate(surveillance_predictions = calculate_surveillance_residuals(model_predictions,
-#'                                                                             split_id,
-#'                                                                             grow_length = FALSE,
-#'                                                                             include_init = TRUE))
+#'   dplyr::mutate(surveillance_predictions =
+#'                    calculate_surveillance_residuals(model_predictions,
+#'                                                     window_time_id,
+#'                                                     split_id,
+#'                                                     grow_length = FALSE,
+#'                                                     include_init = TRUE))
 calculate_surveillance_residuals <- function(list_of_dataframes,
+                                             window_time_ids,
                                              split_ids,
                                              grow_length = FALSE,
                                              include_init = FALSE,
                                              check_space_ids = TRUE) {
-  #TODO(): Is this even what I want this function to look like? I'm leaving a lot to convention
-  # Is there an alternative where I pass a data frame with id_space, id_time, and nested data frames?
-  # That's not conceptually easier, but it is safer.
 
   # Arg checks
   list_of_dataframes <- purrr::map(list_of_dataframes, validate_spacetime_data)
   stopifnot(rlang::is_integerish(split_ids),
+            rlang::is_integerish(window_time_ids),
             rlang::is_scalar_logical(grow_length),
             rlang::is_scalar_logical(include_init),
             rlang::is_scalar_logical(check_space_ids))
+  if (anyDuplicated(split_ids) | anyDuplicated(window_time_ids)) {
+    stop("`split_ids` and `window_time_ids` must be unique")
+  }
 
 
   # Check that id_space matches between the datas
@@ -118,11 +130,15 @@ calculate_surveillance_residuals <- function(list_of_dataframes,
   }
   # Actual code
 
-  slice_time <- function(df, split_id) {
-    df %>%
-      dplyr::filter(id_time >= split_id)
-  }
-  surveillance_datas <- purrr::map2(list_of_dataframes, split_ids, slice_time)
+  # Put the data into a data frame
+  working_df <- tibble::tibble(window_time_id = window_time_ids,
+                               split_id = split_ids,
+                               working_data = list_of_dataframes) %>%
+    dplyr::mutate(row_id = dplyr::row_number()) %>%
+    dplyr::arrange(window_time_id)
+  working_df <- working_df %>%
+    rowmute(surveillance_data = dplyr::filter(working_data, id_time >= split_id))
+
 
   filter_and_bind <- function(x, y) {
     # If we have overlapping predictions between steps, always take the most recent.
@@ -133,23 +149,32 @@ calculate_surveillance_residuals <- function(list_of_dataframes,
 
 
   if (include_init) {
-    init <- dplyr::anti_join(list_of_dataframes[[1]], surveillance_datas[[1]], by = c("id_time", "id_space"))
-    surveillance_datas <- surveillance_datas %>%
-      purrr::accumulate(., filter_and_bind, .init = init) %>%
-      .[-1]
+    init <- working_df %>%
+      dplyr::slice_min(split_id) %>%
+      rowmute(init = dplyr::filter(working_data, id_time < split_id)) %>%
+      dplyr::pull(init) %>%
+      .[[1]]
+
+    working_df <- working_df %>%
+      dplyr::mutate(surveillance_data = purrr::accumulate(surveillance_data, filter_and_bind,
+                                                          .init = init)[-1])
   } else {
-    surveillance_datas <- surveillance_datas %>%
-      purrr::accumulate(., filter_and_bind)
+    working_df <- working_df %>%
+      dplyr::mutate(surveillance_data = purrr::accumulate(surveillance_data, filter_and_bind))
+
   }
 
 
 
   if (!grow_length) {
-    surveillance_datas <- purrr::map2(surveillance_datas, list_of_dataframes,
-                                     function(x, y) dplyr::semi_join(x, y, by = c("id_time", "id_space")))
+    working_df <- working_df %>%
+      rowmute(surveillance_data = dplyr::semi_join(surveillance_data, working_data,
+                                                   by = c("id_time", "id_space")))
   }
 
-
+  surveillance_datas <- working_df %>%
+    dplyr::arrange(row_id) %>%
+    dplyr::pull(surveillance_data)
   return(surveillance_datas)
 }
 
