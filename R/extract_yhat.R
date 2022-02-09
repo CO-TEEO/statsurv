@@ -49,35 +49,42 @@
 #' @md
 #' @examples
 #' library("scanstatistics")
-#' nm_county_coord <- statsurv::nm_county_coord
 #' data(NM_popcas)
 #'
 #' # Fit a model to all the data, and then extract predictions:
 #' fit <- glm(count ~ year,
 #'            family = poisson(link = "log"),
 #'            offset = log(population),
-#'            data = NM_popcas)
+#'            data = NM_popcas[1:600, ])
 #'
 #' # Then use extract_yhat to get out predictions for our observed variable:
 #' extract_yhat(fit, NM_popcas, se_fit = TRUE)
 #'
+#' # We can also fit glmer models
+#' fit_glmer <- lme4::glmer(count ~ I(year - 1980) + (1 | county) + offset(log(population)),
+#'                          family = "poisson",
+#'                          data = NM_popcas[1:600, ])
+#' extract_yhat(fit_glmer, NM_popcas, se_fit = TRUE)
+#'
 #' \dontrun{
-#' # We can also use INLA models if available:
-#' fit_inla <- INLA::inla(count ~ year + f(county, model = "iid"),
-#'                        family = "poisson",
-#'                        control.family = list(link = "log"),
-#'                        offset = log(population),
-#'                        # This option is required to use extract_yhat
-#'                        control.predictor = list(compute = TRUE),
-#'                        data = NM_popcas)
+#'   # We can also use INLA models if available:
+#'   # All the data points to generate predictions for much be included in the
+#'   # data arg of the INLA model
+#'   fit_inla <- INLA::inla(count ~ year + f(county, model = "iid"),
+#'                          family = "poisson",
+#'                          control.family = list(link = "log"),
+#'                          offset = log(population),
+#'                          # This option is required to use extract_yhat
+#'                          control.predictor = list(compute = TRUE),
+#'                          data = NM_popcas)
 #'
-#' extract_yhat(fit_inla, NM_popcas)
-#'
+#'   extract_yhat(fit_inla, NM_popcas)
 #' }
 extract_yhat <- function(fit, newdata, ...) {
  UseMethod("extract_yhat", fit)
 }
 
+#' @rdname extract_yhat.Arima
 #' @export
 extract_yhat.arima_tidy <- function(fit, newdata, ...) {
   # Having another method dispatch was confusing roxygen.
@@ -96,6 +103,7 @@ extract_yhat.default <- function(fit, newdata, ...) {
 # Turns out merMod doesn't handle NA's well.
 # (Well, the .fitted column is ok, it's all the other columns that mess us up)
 
+#' @rdname extract_yhat
 #' @export
 extract_yhat.merMod <- function(fit, newdata, ...) {
   if ("(offset)" %in% colnames(stats::model.frame(fit))) {

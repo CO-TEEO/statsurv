@@ -17,16 +17,16 @@ rows, including repeats (\code{unique_only = FALSE}) or if only unique values sh
 (\code{unique_only = TRUE}). Does not apply to data frames if \code{combine_dfs = TRUE}.}
 }
 \value{
-A list of length one. If `combine_dfs = FALSE, unique_only = FALSE`, then `collapse()`
-  returns a `list(vec)`. If `combine_dfs = TRUE`, and `vec` is a list of data frames, then
-  `collapse()` returns `list(bind_rows(vec))`. If `unique_only = TRUE`, then duplicate entries of
-  `vec` are removed.
+A list of length one. If \verb{combine_dfs = FALSE, unique_only = FALSE}, then \code{collapse()}
+returns a \code{list(vec)}. If \code{combine_dfs = TRUE}, and \code{vec} is a list of data frames, then
+\code{collapse()} returns \code{list(bind_rows(vec))}. If \code{unique_only = TRUE}, then duplicate entries of
+\code{vec} are removed.
 }
 \description{
 Take a vector or list and combine the entries into a list of length 1.
 }
 \details{
-`collapse()` is a helper function used by \code{\link{collapse_all}}, but can also be used in
+\code{collapse()} is a helper function used by \code{\link{collapse_all}}, but can also be used in
 conjunction with \code{\link[dplyr]{summarize}} to reduce the number of rows in a data frame
 without losing information.
 }

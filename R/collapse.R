@@ -45,11 +45,12 @@
 #'   (`unique_only = TRUE`). Does not apply to data frames if `combine_dfs = TRUE`.
 #' @param unlist_scalars Logical. After columns are reduced to a single row, should columns
 #'   containing scalar values be converted from list columns into regular columns.
-#' @inheritParams dplyr::summarize
+#' @param .groups Grouping structure of the result. Can be "drop_last", "drop", "keep", or
+#'   "rowwise". See \code{\link[dplyr]{summarize}} for details.
 #'
 #' @return An object of the same type as `df`, with one row per group in the original data frame.
 #'   Columns other than grouping variables are transformed into list columns. If `unlist_scalars =
-#'   TRUE`, some of the list columns may be conveted back into regular columns.
+#'   TRUE`, some of the list columns may be converted back into regular columns.
 #' @export
 #' @md
 #'
@@ -95,6 +96,7 @@ collapse_all <- function(df, combine_dfs = TRUE, unique_only = FALSE, unlist_sca
 #'   `collapse()` returns `list(bind_rows(vec))`. If `unique_only = TRUE`, then duplicate entries of
 #'   `vec` are removed.
 #' @export
+#' @md
 #'
 #' @examples
 #' vec <- c(1, 2, 3, 3, 4)

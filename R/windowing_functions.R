@@ -107,6 +107,6 @@ window_idtime <- function(spacetime_data, min_train,
                        split_id = split_id[[1]])
   }
   spacetime_data %>%
-    dplyr::select(id_time, id_space, split_id, curr_data)
+    dplyr::select(window_time_id = id_time, window_space_id = id_space, split_id, curr_data)
 }
 

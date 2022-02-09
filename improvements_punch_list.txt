@@ -1,10 +1,9 @@
-Documentation and examples for predict.arima_tidy
-Documentation and examples for augment.arima_tidy
-Figure out what if I'm happy with calculate_surveillance_residuals
 Update our data sources and documentation
 Delete extract_alarm_statistic (wanted to copy documentation over first)
 Delete extract_clusters (wanted to copy documentation over first)
-Update examples for extract_yhat
+Delete test-extract_yhat-inla.R (wanted to adapt some of the tests for tidy_inla and glance_inla)
+
+
 Examples for extract_yhat.Arima
 Delete generate_date_range (lubridate::seq does this better)
 Figure out what to do with generate_study_area (does st_crop do this better? Or sf[a, ]?)
@@ -16,6 +15,7 @@ Promote tidy_inla and glance_inla into proper functions we can use independently
 Documentation and examples for report_top_clusters
 Documentation and examples for scan_statistics2
 Update overall documentation for the package
+Document presidents_df dataset
 
 Add a `min_k` argument to space_coord to zones
 Add a `step` argument to window_idtime

@@ -2,39 +2,7 @@
 
 set.seed(615180269)
 
-rowMedians <- function(data) {
-  apply(data, 1, median)
-}
-
-expect_similar <- function(object, object2, pcnt_err = 0.05, abs_err = 0.2) {
-  act <- quasi_label(rlang::enquo(object), arg = "object")
-  act2 <- quasi_label(rlang::enquo(object2), arg = "object2")
-  object <- unname(object)
-  object2 <- unname(object2)
-  wi_pcnt <- abs((object - object2) / object) <= pcnt_err
-  wi_abs <- abs(object - object2) <= abs_err
-  if (all(wi_pcnt | wi_abs)) {
-    succeed()
-    return(invisible(act$val))
-  }
-
-  good_m <- wi_abs | wi_pcnt
-  bad_m <- !good_m
-  msg <- compare(object[bad_m], object2[bad_m])$message
-  fail(msg)
-}
-
-compare_extract_aug <- function(fit, newdata, f) {
-
-  yhat <- extract_yhat(fit, newdata)
-
-  if (endsWith(class(fit)[[1]], "merMod")) {
-    aug <- suppressWarnings(augment(fit, newdata = newdata, type.predict = "response"))
-    aug <- dplyr::select(aug, id_time:.fitted)
-  } else {
-    aug <- augment(fit, newdata = newdata, type.predict = "response")
-  }
-  expect_equal(yhat, aug)
+check_extract <- function(fit, yhat, f) {
   expect_true(".fitted" %in% colnames(yhat))
   expect_true(is.data.frame(yhat))
   # We need some way to check that our fitted values are actually reasonable.
@@ -48,11 +16,11 @@ compare_extract_aug <- function(fit, newdata, f) {
   if (!"-" %in% as.character(f[[3]]))  {
     # Often get large disagreements if no intercept, which I don't understand but OK.
 
-    if ("negbin" %in% class(fit)) {
+    if ("negbin" %in% class(fit) || grepl("qpois", as.character(f[[2]]))) {
       # Also get larger disagreemetns for glm.nb
       expect_true(abs(d) <= 0.04)
     } else {
-      expect_true(abs(d) < 0.01)
+      expect_true(abs(d) < 0.02)
     }
   }
 
@@ -64,17 +32,24 @@ compare_extract_aug <- function(fit, newdata, f) {
   if (all(y > 0)) {
     expect_true(all(fitted > 0))
   }
+}
+compare_extract_aug <- function(fit, newdata, f) {
 
+  yhat <- extract_yhat(fit, newdata)
+
+  if (endsWith(class(fit)[[1]], "merMod")) {
+    aug <- suppressWarnings(augment(fit, newdata = newdata, type.predict = "response"))
+    aug <- dplyr::select(aug, id_time:.fitted)
+  } else {
+    aug <- augment(fit, newdata = newdata, type.predict = "response")
+  }
+  expect_equal(yhat, aug)
+  check_extract(fit, yhat, f)
 }
 
 
 # Then create some basic data to test on:
-# id_time <- seq(1:100)
 start_date <- seq(lubridate::ymd("2010-01-01"), lubridate::ymd("2019-12-21"), by = "month")
-# time_coord <- generate_date_range(lubridate::ymd("2010-01-01"),
-                                  # lubridate::ymd("2019-12-21"),
-                                  # time_division = "month") %>%
-  # tibble::as_tibble()
 
 spacetime_data <- expand.grid(id_time = seq_along(start_date),
                               id_space = 1:10) %>%
@@ -101,7 +76,7 @@ ey_newdata <- cbind(spacetime_data, x_continuous, x_discrete, x_exp, x_binary, e
   dplyr::mutate(y_lm = 3 + 2.5 * x_continuous + rnorm(n, sd = 2),
                 y_lm_f = 3 + 2.5 * x_continuous + factor_coeffs[x_discrete] + rnorm(n, sd= 2),
                 y_logit = rbinom(n, 1, arm::invlogit(x_exp * 0.05 + 1)),
-                y_logit_f = rbinom(n, 1, arm::invlogit(x_exp * 0.02 - factor_coeffs[x_discrete] / 2)), #Testing changing 0.05 to 0.02
+                y_logit_f = rbinom(n, 1, arm::invlogit(x_exp * 0.02 - factor_coeffs[x_discrete] / 2)),
                 y_pois = rpois(n, exp(2.8 + 0.012 * x_continuous) - 0.20 * x_binary),
                 y_pois_off = rpois(n, exp(-3 + 0.012 * x_continuous - 0.20 * x_binary + offset)),
                 y_qpois_off = rnbinom(n,
@@ -163,3 +138,8 @@ adj_f <- function(f) {
 }
 formulas_mermod <- purrr::map(formulas, adj_f)
 
+adj_f_inla <- function(f) {
+  f[[3]] <- rlang::expr(!!f[[3]] + f(id_space, model = "iid"))
+  f
+}
+formulas_inla <- purrr::map(formulas, adj_f_inla)

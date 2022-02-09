@@ -6,6 +6,7 @@
 \usage{
 calculate_surveillance_residuals(
   list_of_dataframes,
+  window_time_ids,
   split_ids,
   grow_length = FALSE,
   include_init = FALSE,
@@ -20,8 +21,13 @@ row, with lower numbers being earlier and higher numbers being later. The column
 identifies the spatial location or area associated with each row, but no meaning or order is
 ascribed to the values.}
 
+\item{window_time_ids}{A vector the same length as \code{list_of_dataframes}. Each entry should be the
+value of \code{id_time} associated with each data frame in \code{list_of_dataframes}. For example, if
+\code{list_of_dataframes} contains model output, \code{window_time_ids} would be the time point when each
+model was run, or the latest timepoint included in each model.}
+
 \item{split_ids}{A vector the same length of \code{list_of_dataframes}. Each entry should be the value
-of \code{id_time} that marks the begining of the prediction data in each data frame.}
+of \code{id_time} that marks the beginning of the prediction data in each data frame.}
 
 \item{grow_length}{Boolean. Should the size of the returned dataframes increase as the number of
 available surveillance predictions increase?}
@@ -45,11 +51,13 @@ data points that never had any predictions generated for them.
 }
 \description{
 In statistical surveillance, "surveillance residuals" are defined as the difference
-between observed data for a new time period and the preidctions from a model fit using previous
-time periods. In theory, examining surveillance residuals should allow statistical methods to
-detect outbreaks or clusters more rapidly, since the model used to predict baseline estimates
-is not affected by any current outbreaks. In practice, it is still an open question whether
-using surveillance residuals over ordinary residuals provides any appreciable benefit.
+between observed data for a new time period and the predictions from a model fit using previous
+time periods. The key difference from ordinary model residuals is that surveillance residuals
+are never calculated for data points used to fit the model. In theory, examining surveillance
+residuals should allow statistical methods to detect outbreaks or clusters more rapidly, since
+the model used to predict baseline estimates is not affected by any current outbreaks. In
+practice, it is still an open question whether using surveillance residuals over ordinary
+residuals provides any appreciable benefit.
 
 \code{calculate_surveillance_residuals} takes a set of data frames and combines the most recent time
 period or time periods from each one. If the data frames contain the estimates from sequentially
@@ -96,19 +104,23 @@ model_res <- windowed_data \%>\%
 # Use convert_to_surveillance to take the last time period
 # from each model prediction
 calculate_surveillance_residuals(model_res$model_predictions,
+                                 model_res$window_time_id,
                                  model_res$split_id)
 
 # Repeat with grow_length = FALSE, init = TRUE,
 # so the dimensions of the output match the dimensions of the input
 calculate_surveillance_residuals(model_res$model_predictions,
+                                 model_res$window_time_id,
                                  model_res$split_id,
                                  grow_length = FALSE,
                                  include_init = TRUE)
 
 # We can use the function inside mutate to add a column to our data frame
 model_res \%>\%
-  dplyr::mutate(surveillance_predictions = calculate_surveillance_residuals(model_predictions,
-                                                                            split_id,
-                                                                            grow_length = FALSE,
-                                                                            include_init = TRUE))
+  dplyr::mutate(surveillance_predictions =
+                   calculate_surveillance_residuals(model_predictions,
+                                                    window_time_id,
+                                                    split_id,
+                                                    grow_length = FALSE,
+                                                    include_init = TRUE))
 }

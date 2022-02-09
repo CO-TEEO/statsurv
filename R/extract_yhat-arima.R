@@ -53,7 +53,8 @@
 #'   `extract_yhat` or `augment` start with a dot.
 #' @export
 #' @md
-#' @seealso \code{\link{extract_yhat}}  \code{\link[forecast]{simulate.Arima}} \code{\link{arima_tidy}}
+#' @seealso \code{\link{extract_yhat}}  \code{\link[forecast]{simulate.Arima}}
+#'   \code{\link{arima_tidy}} \code{\link{augment.arima_tidy}}
 #'
 #' @examples
 extract_yhat.Arima <- function(fit, newdata, resp_var, newxreg = NULL, ...) {

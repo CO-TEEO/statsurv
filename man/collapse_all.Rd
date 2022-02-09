@@ -25,29 +25,12 @@ rows, including repeats (\code{unique_only = FALSE}) or if only unique values sh
 \item{unlist_scalars}{Logical. After columns are reduced to a single row, should columns
 containing scalar values be converted from list columns into regular columns.}
 
-\item{.groups}{\ifelse{{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}} Grouping structure of the result.
-\itemize{
-\item "drop_last": dropping the last level of grouping. This was the
-only supported option before version 1.0.0.
-\item "drop": All levels of grouping are dropped.
-\item "keep": Same grouping structure as \code{.data}.
-\item "rowwise": Each row is its own group.
-}
-
-When \code{.groups} is not specified, it is chosen
-based on the number of rows of the results:
-\itemize{
-\item If all the results have 1 row, you get "drop_last".
-\item If the number of rows varies, you get "keep".
-}
-
-In addition, a message informs you of that choice, unless the result is ungrouped,
-the option "dplyr.summarise.inform" is set to \code{FALSE},
-or when \code{summarise()} is called from a function in a package.}
+\item{.groups}{Grouping structure of the result. Can be "drop_last", "drop", "keep", or
+"rowwise". See \code{\link[dplyr]{summarize}} for details.}
 }
 \value{
 An object of the same type as \code{df}, with one row per group in the original data frame.
-Columns other than grouping variables are transformed into list columns. If \code{unlist_scalars = TRUE}, some of the list columns may be conveted back into regular columns.
+Columns other than grouping variables are transformed into list columns. If \code{unlist_scalars = TRUE}, some of the list columns may be converted back into regular columns.
 }
 \description{
 \code{collapse_all()} takes a data frame and for each column, combines all the entries for each group
