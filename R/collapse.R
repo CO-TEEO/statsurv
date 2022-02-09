@@ -2,7 +2,7 @@
 #' Merge rows from each group into a list
 #'
 #' `collapse_all()` takes a data frame and for each column, combines all the entries for each group
-#' into a list. Other parametersr control whether data frames should be merged into a single longer
+#' into a list. Other parameters control whether data frames should be merged into a single longer
 #' data frame, whether only unique values should be reported, or whether columns should be
 #' transformed back into atomic columns where possible.
 #'
@@ -70,7 +70,7 @@
 #'   collapse_all()
 collapse_all <- function(df, combine_dfs = TRUE, unique_only = FALSE, unlist_scalars = TRUE, .groups = NULL) {
   df <- df %>%
-    summarize(across(everything(), .fns = collapse,
+    dplyr::summarize(dplyr::across(everything(), .fns = collapse,
                      combine_dfs = combine_dfs, unique_only = unique_only),
               .groups = .groups)
   if (unlist_scalars) {
@@ -127,7 +127,7 @@ collapse <- function(vec, combine_dfs = TRUE, unique_only = FALSE) {
 
 
   if (combine_dfs) {
-    is_df <- map_lgl(vec, is.data.frame)
+    is_df <- purrr::map_lgl(vec, is.data.frame)
     if (all(is_df)) {
       return(list(dplyr::bind_rows(vec)))
     }
@@ -166,7 +166,6 @@ unlist_scalars <- function(df) {
     if (all(purrr::map_lgl(col, is_scalar))) {
       df[[ii]] <- tryCatch(vctrs::vec_c(!!!col),
                            error = function(e) {col})
-      # df[[ii]] <- vctrs::vec_c(!!!col)
     }
   }
   df

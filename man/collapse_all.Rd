@@ -20,7 +20,7 @@ single longer data frame (\code{combine_dfs = TRUE}) or left as a list of data f
 
 \item{unique_only}{Logical. Whether the entries in a list should contain the values from all
 rows, including repeats (\code{unique_only = FALSE}) or if only unique values should be reported
-(\code{unique_only = TRUE}).}
+(\code{unique_only = TRUE}). Does not apply to data frames if \code{combine_dfs = TRUE}.}
 
 \item{unlist_scalars}{Logical. After columns are reduced to a single row, should columns
 containing scalar values be converted from list columns into regular columns.}
@@ -51,7 +51,7 @@ Columns other than grouping variables are transformed into list columns. If \cod
 }
 \description{
 \code{collapse_all()} takes a data frame and for each column, combines all the entries for each group
-into a list. Other parametersr control whether data frames should be merged into a single longer
+into a list. Other parameters control whether data frames should be merged into a single longer
 data frame, whether only unique values should be reported, or whether columns should be
 transformed back into atomic columns where possible.
 }

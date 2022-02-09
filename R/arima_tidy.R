@@ -61,10 +61,15 @@ arima_tidy <- function(f, data,
 }
 
 
+#' @param object
+#'
+#' @param only_newdata
+#' @param newxreg
+#' @param ...
+#'
 #' @export
 predict.arima_tidy <- function(object, only_newdata = NULL, newxreg = NULL, ...) {
   # TODO(): Document this
-
   # Need this because the predict.Arima method tries to pull xreg out of the parent environment.
   # Why you ask? I have no idea.
   xreg <- object$xreg
@@ -81,6 +86,11 @@ predict.arima_tidy <- function(object, only_newdata = NULL, newxreg = NULL, ...)
   }
 }
 
+#' @param fit
+#'
+#' @param newdata
+#' @param ...
+#'
 #' @export
 augment.arima_tidy <- function(fit, newdata, ...) {
   # TODO(): Document this

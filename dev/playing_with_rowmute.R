@@ -37,8 +37,6 @@ windowed_data <- window_idtime(spacetime_data,
                                   n_predict = 1,
                                   model_arity = "multi")
 
-windowed_data %>%
-  mutate(fit = list(lm(y ~ time, data = curr_data)))
 
 df_after_loop_model <- windowed_data %>%
   rowmute(data_for_model = prepare_prediction_data(curr_data, id_time, split_id, )) %>%
@@ -47,7 +45,7 @@ df_after_loop_model <- windowed_data %>%
 library(generics)
 library(broom)
 df_after_augment <- df_after_loop_model %>%
-  pmute(aug_data = generics::augment(fit, newdata = curr_data))
+  rowmute(aug_data = generics::augment(fit, newdata = curr_data))
 # Not sure how much we'll be able to use augment. It seems like it's pretty finicky and might not work
 # with forecast or fable.
 
@@ -58,16 +56,15 @@ df_after_augment <- df_after_loop_model %>%
 # And that's one where we'd want to clarify that it's not rowwise (because we have to combine them)
 
 
-windowed_data_ex <- window_spacetime(spacetime_data,
+windowed_data_ex <- window_idtime(spacetime_data,
                                   min_train = 5,
                                   max_train = 7,
                                   n_predict = 1,
-                                  model_arity = "uni") %>%
-  filter(id_time >= 6)
+                                  model_arity = "uni")
 
 df_after_loop_model_ex <- windowed_data_ex %>%
-  pmute(data_for_model = prep_data_for_model(curr_data, id_time, 1, "y", "NA")) %>%
-  pmute(fit = simple_lm_func(data_for_model))
+  rowmute(data_for_model = prepare_prediction_data(curr_data, id_time, 1, "y", "NA")) %>%
+  rowmute(fit = simple_lm_func(data_for_model))
 
 library(generics)
 library(broom)

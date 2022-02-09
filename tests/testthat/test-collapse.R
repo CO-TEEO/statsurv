@@ -113,7 +113,7 @@ test_that("collapse turns things into lists", {
 
   # Then some quick checks to make sure our groupings work
   collapsed_df <- df %>%
-    group_by(id) %>%
+    dplyr::group_by(id) %>%
     dplyr::summarise(dplyr::across(.cols = dplyr::everything(), .fns = collapse, combine_dfs = FALSE,
                                    unique_only = FALSE))
   expect_equal(nrow(collapsed_df), 2)
@@ -121,7 +121,7 @@ test_that("collapse turns things into lists", {
   expect_equal(collapsed_df$funcs, list(mean, list(median, median)))
   expect_equal(collapsed_df$dfs, list(data.frame(x = 1), list(data.frame(x = 2), data.frame(x = 2))))
   collapsed_df2 <- df %>%
-    group_by(id) %>%
+    dplyr::group_by(id) %>%
     dplyr::summarise(dplyr::across(.cols = dplyr::everything(), .fns = collapse, combine_dfs = TRUE,
                                    unique_only = FALSE))
   expect_equal(dplyr::select(collapsed_df, -dfs), dplyr::select(collapsed_df2, -dfs))
@@ -134,7 +134,7 @@ test_that("collapse turns things into lists", {
 
   # And with unique_only = TRUE
   collapsed_df <- df %>%
-    group_by(id) %>%
+    dplyr::group_by(id) %>%
     dplyr::summarise(dplyr::across(.cols = dplyr::everything(), .fns = collapse, combine_dfs = FALSE,
                                    unique_only = TRUE))
   expect_equal(nrow(collapsed_df), 2)
@@ -142,7 +142,7 @@ test_that("collapse turns things into lists", {
   expect_equal(collapsed_df$funcs, list(mean, median))
   expect_equal(collapsed_df$dfs, list(data.frame(x = 1), data.frame(x = 2)))
   collapsed_df2 <- df %>%
-    group_by(id) %>%
+    dplyr::group_by(id) %>%
     dplyr::summarise(dplyr::across(.cols = dplyr::everything(), .fns = collapse, combine_dfs = TRUE,
                                    unique_only = TRUE))
   expect_equal(dplyr::select(collapsed_df, -dfs), dplyr::select(collapsed_df2, -dfs))

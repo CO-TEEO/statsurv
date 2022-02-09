@@ -78,6 +78,7 @@ key_matrix_to_zones <- function(key_matrix) {
 #' space_coord_to_zones(co_county_fips_2019, 5)
 #' # 297 zones created from 64 locations
 space_coord_to_zones <- function(space_coord, max_k) {
+  #TODO(): Add min_k
   check_type(space_coord, c("Spatial", "sf"))
   check_scalar_type(max_k, "integer")
   if (max_k > nrow(space_coord) || max_k < 1) {
@@ -176,15 +177,6 @@ pivot_for_scan <- function(spacetime_data, value_col) {
   x$id_time <- NULL
   return(as.matrix(x))
 }
-#
-# unpivot_parallel_alarms <- function(alarm_data, spacetime_data, value_col = ".action_level") {
-#   new_data <- as.data.frame(alarm_data) %>%
-#     magrittr::set_colnames(seq_len(ncol(alarm_data))) %>%
-#     dplyr::mutate(id_time = seq_len(nrow(alarm_data))) %>%
-#     tidyr::pivot_longer(-id_time, names_to = "id_space", values_to = value_col,
-#                         names_transform = list("id_space" = as.integer))
-#   return(dplyr::left_join(spacetime_data, new_data, by = c("id_space", "id_time")))
-# }
 
 unpivot_parallel_alarms <- function(parallel_alarm_res, values_to = ".action_level",
                                     row_names = NULL, col_names = NULL) {

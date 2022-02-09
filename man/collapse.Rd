@@ -14,7 +14,7 @@ single longer data frame (\code{combine_dfs = TRUE}) or left as a list of data f
 
 \item{unique_only}{Logical. Whether the entries in a list should contain the values from all
 rows, including repeats (\code{unique_only = FALSE}) or if only unique values should be reported
-(\code{unique_only = TRUE}).}
+(\code{unique_only = TRUE}). Does not apply to data frames if \code{combine_dfs = TRUE}.}
 }
 \value{
 A list of length one. If `combine_dfs = FALSE, unique_only = FALSE`, then `collapse()`

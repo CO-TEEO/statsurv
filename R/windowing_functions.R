@@ -110,16 +110,3 @@ window_idtime <- function(spacetime_data, min_train,
     dplyr::select(id_time, id_space, split_id, curr_data)
 }
 
-window_date <- function(spacetime_data, min_train, max_train, predict_window, model_arity) {
-  # Is this well-specified?
-  # We want to include all data in the past n days as time window, and we want to include the
-  # next m days as predictors
-  # But...hrm.
-  # I need to be careful about that, because then filtering the n_predict is going to be difficult.
-  # That makes the data prep functions all pretty tricky.
-  # Is there a way I can make that easier?
-  # Ok, there are really two id_times that we need to keep track of.
-  # That feels like it should be added to the data frame.
-  # If we had that, I think we could simplify some of the other functions.
-
-}
