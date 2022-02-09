@@ -1,0 +1,30 @@
+Documentation and examples for predict.arima_tidy
+Documentation and examples for augment.arima_tidy
+Figure out what if I'm happy with calculate_surveillance_residuals
+Update our data sources and documentation
+Delete extract_alarm_statistic (wanted to copy documentation over first)
+Delete extract_clusters (wanted to copy documentation over first)
+Update examples for extract_yhat
+Examples for extract_yhat.Arima
+Delete generate_date_range (lubridate::seq does this better)
+Figure out what to do with generate_study_area (does st_crop do this better? Or sf[a, ]?)
+Where possible, replace internal arg checks and errors with rlangs and stopifnot - we get a less nice error message, in exchange for less/cleaner code
+Delete internal_arg_dispatch
+Documentation and examples for parallel2
+Remove the "report_model_coeff" wrapper - we'll just use broom for the most part
+Promote tidy_inla and glance_inla into proper functions we can use independently
+Documentation and examples for report_top_clusters
+Documentation and examples for scan_statistics2
+Update overall documentation for the package
+
+Add a `min_k` argument to space_coord to zones
+Add a `step` argument to window_idtime
+
+Write a reasonable vignette or two
+
+Clean up our tests
+
+Remove dependence on gridcoord
+Remove dependence on sp
+Figure out what we're doing with scanstatistics
+Figure out what to do about the conflicting names when we unnest at the very end

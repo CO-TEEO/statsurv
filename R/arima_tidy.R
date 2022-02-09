@@ -1,14 +1,14 @@
-#' Fit ARIMA models via formula
+#' @title Fit ARIMA models via formula
 #'
-#' `arima_tidy` is a wrapper around \code{\link[arima]{stats} that allows you to specify the
+#' @description `arima_tidy` is a wrapper around \code{\link[arima]{stats}} that allows you to specify the
 #' response variable and any external regressors for an ARIMA model using a data.frame and formula,
 #' instead of having to manually generate `xreg`. This makes the workflow for fitting ARIMA models
-#' much closers to the workflow for fitting `lm` or `glm` models.
+#' much closer to the workflow for fitting `lm` or `glm` models.
 #'
 #'
 #' @param f A \code{\link{stats::formula}} describing the response variable and any external
 #'   regressors to be used in the arima model. All variables included in `f` must be contained in
-#'   `data`. The response variable is passed to \code{\link[arima]{stats} as `x` and all external
+#'   `data`. The response variable is passed to \code{\link[arima]{stats}} as `x` and all external
 #'   regressors are passed as `xreg`.
 #' @param data A data frame or data frame extension (e.g., a tibble) containing all of the variables
 #'   in the model
@@ -30,8 +30,37 @@
 #'   }
 #' @export
 #' @md
+#' @seealso \code{\link[stats]{arima}}, \code{\link{predict.arima_tidy}}, \code{\link{augment.arima_tidy}}
 #'
 #' @examples
+#' data("LakeHuron")
+#' LakeHuron_df <- data.frame(lake_level = as.numeric(LakeHuron),
+#'                            date = seq(start(LakeHuron)[[1]],
+#'                                       end(LakeHuron)[[1]],
+#'                                       by = 1))
+#' LakeHuron_df$election_year = LakeHuron_df$date %% 4 == 0
+#'
+#' # Basically anything that works in a formula can be used in arima_tidy
+#' arima_tidy(lake_level ~ I(date - 1920), data = LakeHuron_df, order = c(2, 0, 0))
+#'
+#' arima_tidy(sqrt(y) ~ date + is_election_year, data = LakeHuron_df, order = c(2, 0, 0))
+#'
+#' # We can reference variables outside of the `data` argument
+#'
+#' shift <- 2000
+#' arima_tidy(sqrt(y) ~ log(date + shift),  data = LakeHuron_df, order = c(2, 0, 0))
+#'
+#' # We can handle data with NA's and seasonal data:
+#' data("presidents_df")
+#'
+#' arima_tidy(y ~ 1, data = presidents_df, order = c(1, 0, 0))
+#'
+#' # We lose the frequency information when the data is
+#' # stored in a data.frame, so we have to specify
+#' # the period manually for seasonal approaches:
+#' arima_tidy(y ~ 1, data = presidents_df, order=c(2,0,1),
+#'            seasonal= list(order = c(1,0,0), period = 4),
+#'            fixed=c(NA, NA, 0.5, -0.1, 50), transform.pars=FALSE)
 arima_tidy <- function(f, data,
                        order = c(0L, 0L, 0L),
                        seasonal = list(order = c(0L, 0L, 0L), period = NA),
@@ -47,11 +76,22 @@ arima_tidy <- function(f, data,
   # I don't love this approach, because it will break if the arguments to arima change. I feel like
   # there should be a way to set the arguments programatically such as through formals(arima_tidy)
   # <- formals(arima), but I'm not sure how that would work with roxygen
-  #
+
+  # Arg checks
+  stopifnot(rlang::is_formula(f),
+            is.data.frame(data))
+
+  # Code
   xreg <- gen_xreg(f, data)
   resp <- gen_resp(f, data)
-  fit <- arima(resp, xreg = xreg, order, seasonal, include.mean, transform.pars, fixed,
-               init, method, n.cond, SSint, optim.method, optim.control, kappa)
+
+  if (ncol(xreg) == 0) {
+    fit <- arima(resp, xreg = NULL, order, seasonal, include.mean, transform.pars, fixed,
+                 init, method, n.cond, SSint, optim.method, optim.control, kappa)
+  } else {
+    fit <- arima(resp, xreg = xreg, order, seasonal, include.mean, transform.pars, fixed,
+                 init, method, n.cond, SSint, optim.method, optim.control, kappa)
+  }
   fit$formula <- f
   fit$xreg <- xreg
   fit$data <- data
@@ -61,55 +101,129 @@ arima_tidy <- function(f, data,
 }
 
 
-#' @param object
+#' Forecast from arima_tidy fits
 #'
-#' @param only_newdata
-#' @param newxreg
-#' @param ...
+#' Forecast from models fit by \code{\link{arima_tidy}}. Calls \code{\link[stats]{predict.Arima}}
+#' under the hood.
 #'
+#' Even though `arima_tidy` models are fit like `lm` or `glm` models, it's important to remember
+#' that they behave differently, because the order of the data points is crucial for all ARIMA
+#' models. The rows in `only_newdata` are assumed to be ordered from earliest to latest, and are
+#' assumed to follow immeadiately after the data used to fit the model. To extract fitted values and
+#' generate predictions in a single step, use \code{\link{augment.arima_tidy}}.
+#'
+#' @param object The result of an \code{arima_tidy} fit
+#'
+#' @param only_newdata New data to be used for prediction. Will be transformed into `newxreg` using
+#'   the formula stored in `object`.
+#' @param n.ahead The number of steps ahead for which prediction is required. Optional if
+#'   `only_newdata` is specified, otherwise required.
+#' @inheritParams stats::predict.Arima
+#'
+#' @return A time series of predictions, or if `se.fit = TRUE`, a list with timeseries `pred` and
+#'   `se`.
+#' @seealso \code{\link[stats]{arima}}, \code{\link[stats]{predict.Arima}}, \code{\link{augment.arima_tidy}}
 #' @export
-predict.arima_tidy <- function(object, only_newdata = NULL, newxreg = NULL, ...) {
-  # TODO(): Document this
+#' @md
+#' @examples
+#' data(presidents_df)
+#' # Fit on the first 110 rows, predict the last 10
+#' fit <- arima_tidy(approval_rating ~ 1,
+#'                   data = presidents_df[1:110, ],
+#'                   order = c(1, 0, 0))
+#' predict(fit, n.ahead = 10)
+#'
+#' fit <- arima_tidy(approval_rating ~ election_year,
+#'                   data = presidents_df[1:110, ],
+#'                   order = c(1, 0, 0))
+#' predict(fit, only_newdata = presidents_df[111:120, ], n.ahead = 10)
+#' predict(fit, only_newdata = presidents_df[111:120, ])
+predict.arima_tidy <- function(object, only_newdata = NULL, n.ahead, se.fit = TRUE, ...) {
+  stopifnot(inherits(object, "arima_tidy"),
+            inherits(object, "Arima"),
+            rlang::is_scalar_logical(se.fit),
+            is.null(only_newdata) || is.data.frame(only_newdata))
+  if (!is.null(only_newdata) & !missing(n.ahead)) {
+    stopifnot(rlang::is_scalar_integerish(n.ahead))
+  }
+  args <- list(...)
+  if ("newxreg" %in% names(args)) {
+    stop("predict cannot be called on `arima_tidy` objects using `newxreg`. ",
+         "Specify new data for predictions using the `only_newdata` argument")
+  }
+
+
   # Need this because the predict.Arima method tries to pull xreg out of the parent environment.
   # Why you ask? I have no idea.
   xreg <- object$xreg
 
-  if (!is.null(newxreg)) {
-    NextMethod("predict", object)
-  } else {
-    # Then allow this to be able to provide new data, instead of newxreg.
+  if (!is.null(only_newdata)) {
     comb_data <- rbind(object$data, only_newdata)
     newxreg <- gen_xreg(object$formula, comb_data)
     old_rows <- seq(1, nrow(object$data), by = 1)
-    newnewxreg <- newxreg[-old_rows, , drop = FALSE]
-    NextMethod("predict", object, newxreg = newnewxreg)
+    only_newxreg <- newxreg[-old_rows, , drop = FALSE]
+    if (missing(n.ahead)) {
+      n.ahead <- nrow(only_newxreg)
+    }
+
+    # We do this manually, instead of calling NextMethod because
+    # calling NextMethod leads to a different parent environment than
+    # when we do it manually.
+    class(object) <- class(object)[-1]
+    predict(object, newxreg = only_newxreg, n.ahead = n.ahead, ...)
+  } else {
+    NextMethod("predict", object, n.ahead = n.ahead, ...)
   }
 }
 
-#' @param fit
+#' Augment data with information from an arima_tidy object
 #'
-#' @param newdata
-#' @param ...
+#' A method for the \code{\link[generics]{augment}} generic for \code{\link{arima_tidy}} objects.
+#' Takes a model object and a dataset, and adds information about fitted values in the `.fitted`
+#' column and model residuals in the `.resid` column.
 #'
+#' @inheritParams predict.arima_tidy
+#' @param newdata The data used to originally fit the model as well as any additional data to be
+#'   used to generate predictions. The rows are assumed to be ordered from earliest to latest. If
+#'   the originally model was fit on `n` data points, the first `n` rows of `newdata` are assumed to
+#'   be the data used to fit the model, and any additional rows are used to generate predictions
+#'   using \code{\link{predict.arima_tidy}}.
+#' @param ... Additional arguments. Not used.
+#'
+#' @return `newdata` with additional columns `.fitted` and `.resid` containing the predicted values
+#'   and the residuals.
 #' @export
+#' @md
+#' @examples
+#' data(presidents_df)
+#' # Fit on the first 110 rows, predict the last 10
+#' fit <- arima_tidy(approval_rating ~ 1,
+#'                   data = presidents_df[1:110, ],
+#'                   order = c(1, 0, 0))
+#' # Augment takes the whole dataset (both training and prediction data)
+#' augment(fit, presidents_df)
+#'
+#' fit <- arima_tidy(approval_rating ~ election_year,
+#'                   data = presidents_df[1:110, ],
+#'                   order = c(1, 0, 0))
+#' augment(fit, presidents_df)
 augment.arima_tidy <- function(fit, newdata, ...) {
   # TODO(): Document this
+  stopifnot(inherits(fit, "arima_tidy"),
+            inherits(fit, "Arima"),
+            is.data.frame(newdata))
 
   n_ahead <- nrow(newdata) - length(fit$fitted)
-  n_old <- length(fit$fitted)
-  newxreg <- gen_xreg(fit$formula, newdata)
-  xreg <- fit$xreg
-  # We have to assume that the rows of newdata are ordered, otherwise this doesn't work.
-
-  newnew_xreg <- newxreg[n_old + seq_len(n_ahead), , drop = FALSE]
-  if (ncol(newnew_xreg) == 0) {
-    newnew_xreg <- NULL
+  if (n_ahead < 0) {
+    stop("newdata must contain at least as many rows as was used to originally fit the model")
   }
-  new_predictions <- as.numeric(stats::predict(fit,
-                                               n.ahead = n_ahead,
-                                               newxreg = newnew_xreg)$pred)
+  n_old <- length(fit$fitted)
+
+  only_newdata <- newdata[n_old + seq_len(n_ahead), , drop = FALSE]
+
+  new_predictions <- as.numeric(stats::predict(fit, only_newdata = only_newdata)$pred)
   old_predictions <- as.numeric(fit$fitted)
-  predictions <- c(old_predictions, new_predictions) #I don't know if we can assume this
+  predictions <- c(old_predictions, new_predictions)
   newdata$.fitted <- predictions
   resp <- gen_resp(fit$formula, newdata)
   newdata$.resid <- resp - newdata$.fitted

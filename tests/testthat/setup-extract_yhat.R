@@ -68,72 +68,18 @@ compare_extract_aug <- function(fit, newdata, f) {
 }
 
 
-
-# check_yhat_means <- function(space_coord, time_coord, fit, data, n_samples = 100, tol = 0.01) {
-#   yhat <- extract_yhat(space_coord, time_coord, fit, data)
-#   test_that("extract_yhat gives a data frame", {expect_true(is.data.frame(yhat))})
-#   row_has_na <- apply(data, 1, function(x) {any(is.na(x))})
-#   non_na_inds <- which(row_has_na == FALSE)
-#   test_that("extract_yhat matches predict", {
-#     expect_equal(yhat[[3]][non_na_inds], unname(predict(fit, type = "response")))
-#   })
-#   test_that("sample_yhat converges to extract_yhat", {
-#     samples <- sample_yhat(space_coord, time_coord, fit, data, n_samples = n_samples)
-#     expect_similar(rowMedians(samples[, 3:ncol(samples)]), yhat[[3]])
-#   })
-# }
-
-#
-# check_inla <- function(space_coord,
-#                        time_coord,
-#                        fit,
-#                        data,
-#                        expected,
-#                        tol = 1e-4,
-#                        invlink = arm::invlogit,
-#                        n_samples = 100) {
-#
-#   test_that("Of class INLA", {
-#     expect_true("inla" %in% class(fit))
-#   })
-#
-#   yhat <- extract_yhat(space_coord, time_coord, fit, data)
-#   test_that("extract_yhat gives a data frame", {expect_true(is.data.frame(yhat))})
-#   row_has_na <- apply(data, 1, function(x) {any(is.na(x))})
-#   non_na_inds <- which(row_has_na == FALSE)
-#
-#   test_that("extract_yhat.INLA matches expected", {
-#     expect_equal(yhat[[3]],
-#                  expected,
-#                  max_diffs = 14,
-#                  tolerance = tol)
-#   })
-#   test_that("sample_yhat.INLA coverges to extract_yhat.INLA", {
-#     samples <- suppressWarnings(sample_yhat(space_coord, time_coord, fit, data, n_samples))
-#     expect_similar(rowMeans(samples[, 3:ncol(samples)]), yhat[[3]])
-#   })
-# }
-#
-# check_mermod <- function(space_coord, time_coord, fit, data, tol = 0.01) {
-#   yhat <- extract_yhat(space_coord, time_coord, fit, data)
-#   test_that("extract_yhat gives a data frame", {expect_true(is.data.frame(yhat))})
-#   row_has_na <- apply(data, 1, function(x) {any(is.na(x))})
-#   non_na_inds <- which(row_has_na == FALSE)
-#   test_that("extract_yhat matches predict", {
-#     expect_equal(yhat[[3]][non_na_inds], unname(predict(fit, type = "response")))
-#   })
-# }
-
 # Then create some basic data to test on:
 # id_time <- seq(1:100)
-time_coord <- generate_date_range(lubridate::ymd("2010-01-01"),
-                                  lubridate::ymd("2019-12-21"),
-                                  time_division = "month") %>%
-  tibble::as_tibble()
+start_date <- seq(lubridate::ymd("2010-01-01"), lubridate::ymd("2019-12-21"), by = "month")
+# time_coord <- generate_date_range(lubridate::ymd("2010-01-01"),
+                                  # lubridate::ymd("2019-12-21"),
+                                  # time_division = "month") %>%
+  # tibble::as_tibble()
 
-spacetime_data <- expand.grid(id_time = seq_len(nrow(time_coord)),
+spacetime_data <- expand.grid(id_time = seq_along(start_date),
                               id_space = 1:10) %>%
-  dplyr::mutate(start_date = time_coord$start_date[id_time])
+  dplyr::mutate(start_date = start_date[id_time]) %>%
+  tibble::as_tibble()
 
 n <- nrow(spacetime_data)
 na_inds <- which(spacetime_data$id_time == max(spacetime_data$id_time))

@@ -1,10 +1,10 @@
-
 make_matrix <- function(f, df) {
   f[[2]] <- rlang::sym("y_null")
   matrix <- model.matrix(f, data = df)
   m <- colnames(matrix) != "(Intercept)"
   matrix[, m, drop = FALSE]
 }
+
 
 # Ok, what should we check? That extract_yhat matches predict or forecast, as appropriate.
 # Also some checks that our results are reasonable
@@ -83,13 +83,19 @@ for (ind in seq_len(nrow(arima_combos))) {
     yname <- "y_ac1"
     y <- ac_data$y_ac1
   }
+  # I know this is bad practice, but stats::predict.Arima pulls these values out of the
+  # parent environment, and the environments in testthat are weird so we have to set them
+  # manually
+  rlang::env_poke(rlang::global_env(), nm = "all_xregs", all_xregs)
+  rlang::env_poke(rlang::global_env(), nm = "curr_row", curr_row)
+
+
   fit_stats <- stats::arima(ac_data[[yname]],
                             order = curr_row$order[[1]],
                             seasonal = list(order = curr_row$seasonal_order[[1]],
                                             period = curr_row$seasonal_period),
                             xreg = all_xregs[[curr_row$xreg]],
                             include.mean = curr_row$include.mean)
-
 
   yhat_stats <- extract_yhat(fit_stats, newdata = ac_newdata, resp_var = .data[[yname]],
                newxreg = all_newxregs[[curr_row$xreg]])
@@ -102,25 +108,25 @@ for (ind in seq_len(nrow(arima_combos))) {
                                   include.mean = curr_row$include.mean)
 
   yhat_forecast <- extract_yhat(fit_forecast, newdata = ac_newdata, newxreg = all_newxregs[[curr_row$xreg]])
-  # test_that("stats and forecast give the same results", {
-  #   expect_equal(dplyr::select(yhat_stats, -.resid), yhat_forecast)
-  # })
-  # test_that("stats gives reasonable results", {
-  #   expect_true(is.data.frame(yhat_stats))
-  #   expect_true(".fitted" %in% colnames(yhat_stats))
-  # })
-  # test_that("forecast numbers are what we'd expect", {
-  #   expect_equal(as.numeric(fit_forecast$fitted[good_inds]),
-  #                yhat_forecast$.fitted[good_inds])
-  #   curr_newxreg <- all_newxregs[[curr_row$xreg]]
-  #   if (is.null(curr_newxreg)) {
-  #     pred <- forecast::forecast(fit_forecast, h = length(na_inds))$mean
-  #   } else {
-  #     pred <- forecast::forecast(fit_forecast, xreg = curr_newxreg[na_inds, , drop = FALSE])$mean
-  #   }
-  #   expect_equal(as.numeric(pred),
-  #                yhat_forecast$.fitted[na_inds])
-  # })
+  test_that("stats and forecast give the same results", {
+    expect_equal(dplyr::select(yhat_stats, -.resid), yhat_forecast)
+  })
+  test_that("stats gives reasonable results", {
+    expect_true(is.data.frame(yhat_stats))
+    expect_true(".fitted" %in% colnames(yhat_stats))
+  })
+  test_that("forecast numbers are what we'd expect", {
+    expect_equal(as.numeric(fit_forecast$fitted[good_inds]),
+                 yhat_forecast$.fitted[good_inds])
+    curr_newxreg <- all_newxregs[[curr_row$xreg]]
+    if (is.null(curr_newxreg)) {
+      pred <- forecast::forecast(fit_forecast, h = length(na_inds))$mean
+    } else {
+      pred <- forecast::forecast(fit_forecast, xreg = curr_newxreg[na_inds, , drop = FALSE])$mean
+    }
+    expect_equal(as.numeric(pred),
+                 yhat_forecast$.fitted[na_inds])
+  })
   fit_arima_tidy <- arima_tidy(all_formulas[[curr_row$xreg]],
                                data = ac_data,
                                order = curr_row$order[[1]],

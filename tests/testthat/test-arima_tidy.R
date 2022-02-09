@@ -114,7 +114,7 @@ test_that("Predict matches", {
 
 test_that("Predict with xreg matches", {
   skip_if_not_installed("scanstatistics")
-
+  library(scanstatistics)
   data(NM_popcas)
   santa_fe <- NM_popcas %>%
     dplyr::filter(county == "santafe")
@@ -125,12 +125,10 @@ test_that("Predict with xreg matches", {
                                   order = c(2, 1, 0),
                                   xreg = xreg[-pred_rows, , drop = FALSE])
 
-  op <- predict(fit_stats_arima, newxreg = xreg[pred_rows, ])
+  op <- predict(fit_stats_arima, newxreg = xreg[pred_rows, , drop = FALSE], n.ahead = 2)
 
+  xreg <- NULL
   fit_arima_tidy <- arima_tidy(count ~ population, data = santa_fe[-pred_rows, ], order = c(2, 1, 0))
   np <- predict(fit_arima_tidy, only_newdata = santa_fe[pred_rows, ])
   compare_preds(op, np)
-
-  np2 <- predict(fit_arima_tidy, newxreg = xreg[pred_rows, ])
-  compare_preds(op, np2)
 })
