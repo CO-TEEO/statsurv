@@ -13,7 +13,7 @@ key_matrix_sm <- zones_to_key_matrix(zones_sm)
 
 spacetime_data_sm <-
   data.frame(id_space = c(1, 2, 1, 2),
-             id_time = c(1, 2),
+             id_time = c(1, 1, 2, 2),
              cases = c(2, 2, 3, 5),
              .fitted = 2)
 wide_cases_sm <- matrix(data = c(2, 2, 3, 5), nrow = 2, byrow = TRUE)

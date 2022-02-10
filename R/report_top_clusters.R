@@ -38,9 +38,8 @@ report_top_clusters <- function(scan_result,
                                 single_duration = TRUE) {
 
   ### Argument Checks ----
-  check_type(scan_result, "scanstatistic") #Should I allow bare data frames?
-  # check_scalar_type(cutoff_val, "numeric")
-  check_scalar_type(max_reported, "numeric")
+  stopifnot(inherits(scan_result, "scanstatistic"),
+            is_scalar_numeric(max_reported))
 
   ### Generating the data frame we actually use ----
   if (max_reported <= 0) {

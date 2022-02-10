@@ -6,7 +6,7 @@
 \usage{
 parallel_cusum_gaussian(
   wide_cases,
-  wide_baseline,
+  wide_baseline = NULL,
   mean = 0,
   sigma = 1,
   drift = 0.5
@@ -31,9 +31,9 @@ outbreak.}
 }
 \value{
 A matrix with the same dimensions as \code{wide_cases}, where rows indicate time (oldest to
-newst) and columns indicate locations. Element \verb{(i, j) } indicates the value of the CUSUM
+newest) and columns indicate locations. Element \verb{(i, j) } indicates the value of the CUSUM
 statistic at time \code{i} in region \code{j}. The value of the CUSUM statistic at row \code{i} incorporates
-informations from time points \code{1} thought \code{i}.
+information from time points \code{1} thought \code{i}.
 }
 \description{
 \code{parallel_cusum_gaussian} calculates the Gaussian CUSUM statistic independently over

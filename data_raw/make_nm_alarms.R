@@ -13,9 +13,10 @@ nm_county_fips_2010 <- nm_county_fips_2010[nm_county_fips_2010$county != "cibola
 nm_county_fips_2010 <- gc_gridcoord(nm_county_fips_2010, "county")
 nm_county_coord <- nm_county_fips_2010
 
-year_coord <- generate_date_range(lubridate::ymd("1973-01-01"),
-                                  lubridate::ymd("1991-01-01"),
-                                  time_division = "year")
+year_coord <- seq(lubridate::ymd("1973-01-01"),
+                  lubridate::ymd("1991-01-01"),
+                  by = "year")
+
 
 glm_func <- function(space_coord, time_coord, data_for_model) {
   mod <- glm(count ~ year,

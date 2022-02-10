@@ -2,14 +2,13 @@ Update our data sources and documentation
 Delete extract_alarm_statistic (wanted to copy documentation over first)
 Delete extract_clusters (wanted to copy documentation over first)
 Delete test-extract_yhat-inla.R (wanted to adapt some of the tests for tidy_inla and glance_inla)
+Move generate_study_area to the gridcoord package
 
-
-Examples for extract_yhat.Arima
-Delete generate_date_range (lubridate::seq does this better)
-Figure out what to do with generate_study_area (does st_crop do this better? Or sf[a, ]?)
 Where possible, replace internal arg checks and errors with rlangs and stopifnot - we get a less nice error message, in exchange for less/cleaner code
-Delete internal_arg_dispatch
-Documentation and examples for parallel2
+
+Tests for parallel_cusum_gaussian
+Tests for parallel2
+
 Remove the "report_model_coeff" wrapper - we'll just use broom for the most part
 Promote tidy_inla and glance_inla into proper functions we can use independently
 Documentation and examples for report_top_clusters

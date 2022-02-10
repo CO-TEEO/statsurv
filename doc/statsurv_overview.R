@@ -23,7 +23,7 @@ NM_popcas <- NM_popcas %>%
 head(NM_popcas)
 
 nm_county_fips_2010 <- statsurv::nm_county_fips_2010 %>%
-  mutate(county_name = gsub(" ", "", tolower(county_name))) %>% #Remove spaces, make lower case 
+  mutate(county_name = gsub(" ", "", tolower(county_name))) %>% #Remove spaces, make lower case
   rename(county = county_name) %>%
   dplyr::filter(county != "cibola") %>%
   gc_gridcoord("county")
@@ -34,7 +34,7 @@ yr_start <- min(NM_popcas$year)
 yr_fin <- max(NM_popcas$year)
 date_start <- ymd(paste0(yr_start, "-01-01"))
 date_fin <- ymd(paste0(yr_fin, "-12-31"))
-year_coord <- generate_date_range(date_start, date_fin, time_division = "year") %>%
+year_coord <- seq(date_start, date_fin, by = "year") %>%
   rename(year = date_label) %>%
   mutate(year = as.numeric(year))
 
@@ -49,7 +49,7 @@ expected_cases <- extract_yhat(nm_county_fips_2010, year_coord, mod, NM_popcas)
 plot(factor(expected_cases$county), expected_cases$yhat)
 
 ## -----------------------------------------------------------------------------
-expected_case_samples <- sample_yhat(nm_county_fips_2010, year_coord, mod, NM_popcas, 
+expected_case_samples <- sample_yhat(nm_county_fips_2010, year_coord, mod, NM_popcas,
                                      n_samples = 20)
 head(as_tibble(expected_case_samples))
 
@@ -75,12 +75,12 @@ glm_func <- function(space_coord, time_coord, data_for_model) {
 }
 
 ## ----loop-model, message=TRUE-------------------------------------------------
-fits_and_data <- loop_model(space_coord = nm_county_fips_2010, 
-                            time_coord = year_coord, 
-                            data_for_model = NM_popcas, 
-                            outcome_col = "count", 
-                            path_to_model = glm_func, 
-                            use_cache = FALSE, 
+fits_and_data <- loop_model(space_coord = nm_county_fips_2010,
+                            time_coord = year_coord,
+                            data_for_model = NM_popcas,
+                            outcome_col = "count",
+                            path_to_model = glm_func,
+                            use_cache = FALSE,
                             min_train = 7)
 all_fits <- fits_and_data[[1]]
 all_data <- fits_and_data[[2]]
@@ -131,9 +131,9 @@ nm_county_fips_2010[zones[[mlc$zone]], ]
 
 ## ----extract-stat-------------------------------------------------------------
 alarm_df <- extract_alarm_statistic(nm_county_fips_2010, year_coord, all_alarms, mlc$zone)
-ggplot(alarm_df, aes(x = surveillance_date, y = action_level, color = action_level)) + 
-  geom_point() + 
-  geom_line() + 
+ggplot(alarm_df, aes(x = surveillance_date, y = action_level, color = action_level)) +
+  geom_point() +
+  geom_line() +
   geom_line(aes(y = upper_control_limit), color = "gray30", linetype = "dashed")
 
 
@@ -194,12 +194,12 @@ ggplot(dplyr::filter(plot_df, name == "santafe"),
 ## ----model-inla---------------------------------------------------------------
 model_inla_bym <- function(space_coord, time_coord, data_for_model) {
   library(INLA)
-  
+
   neighbors <- spdep::poly2nb(space_coord, queen = FALSE)
   graph_file <-  tempfile()
   spdep::nb2INLA(graph_file, neighbors)
 
-  f <- count ~ year +  
+  f <- count ~ year +
     f(fips_id,
       model = "bym",
       graph = graph_file,
@@ -216,7 +216,7 @@ model_inla_bym <- function(space_coord, time_coord, data_for_model) {
                         control.predictor = list(compute=TRUE,
                                                  link = 1),
                         offset = offset)
-  
+
                         # control.fixed = list(mean = 0,
                         #                      prec = 0.1)
   return(list(fit = fit_inla,
@@ -226,12 +226,12 @@ model_inla_bym <- function(space_coord, time_coord, data_for_model) {
 
 ## ---- message = TRUE----------------------------------------------------------
 NM_popcas$fips_id <- gridcoord::gc_get_match(NM_popcas, nm_county_fips_2010)
-fits_and_data <- loop_model(space_coord = nm_county_fips_2010, 
-                            time_coord = year_coord, 
-                            data_for_model = NM_popcas, 
-                            outcome_col = "count", 
-                            path_to_model = model_inla_bym, 
-                            use_cache = FALSE, 
+fits_and_data <- loop_model(space_coord = nm_county_fips_2010,
+                            time_coord = year_coord,
+                            data_for_model = NM_popcas,
+                            outcome_col = "count",
+                            path_to_model = model_inla_bym,
+                            use_cache = FALSE,
                             min_train = 7,
                             n_predict = 1)
 all_fits_inla <- fits_and_data[[1]]
@@ -281,9 +281,9 @@ nm_county_fips_2010[zones[[mlc$zone]], ]
 
 ## ----extract-stat-inla--------------------------------------------------------
 alarm_df <- extract_alarm_statistic(nm_county_fips_2010, year_coord, all_alarms_inla, mlc$zone)
-ggplot(alarm_df, aes(x = surveillance_date, y = action_level, color = action_level)) + 
-  geom_point() + 
-  geom_line() + 
+ggplot(alarm_df, aes(x = surveillance_date, y = action_level, color = action_level)) +
+  geom_point() +
+  geom_line() +
   geom_line(aes(y = upper_control_limit), color = "gray30", linetype = "dashed")
 
 

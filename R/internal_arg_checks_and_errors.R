@@ -79,6 +79,7 @@ is_type <- function(x, desired_type) {
 
 
 ensure_list <- function(x) {
+  stop("Called function ensure_list in internal_arg_checks_and_errors")
   if (is.data.frame(x) || !is.list(x) ) {
     return(list(x))
   } else {
@@ -97,111 +98,9 @@ stop_subclass <- function(..., .subclass = NULL) {
 }
 
 
-match_coords_and_data <- function(space_coord, time_coord, df, subset_ok = FALSE) {
-  tc_name <- gridcoord::gc_get_name(time_coord)
-  sc_name <- gridcoord::gc_get_name(space_coord)
-  df_name <- deparse(substitute(df))
-  if (any(!c(tc_name, sc_name) %in% colnames(df))) {
-    stop_subclass(df_name, " must contain the columns ", tc_name, " and ",
-                  sc_name, ". Update either ", df_name, " or space_coord/time_coord",
-                  .subclass = "error_bad_arg_value")
-  }
-  pared_df <- df %>%
-    gridcoord::gc_pare(space_coord) %>%
-    gridcoord::gc_pare(time_coord)
-  if (!isTRUE(all.equal(pared_df,
-                        df,
-                        check.attributes = FALSE))) {
-    warning("Some rows in ", df_name, " were removed because they were not identified with ",
-            " your space and time coordinates")
-    df <- pared_df
-  }
-  if (subset_ok) { # subset_ok mean it's ok for df to have just a subset of the space/time coords
-    return(invisible(df))
-  }
-
-  # Then check the other way - that every space and time coordinate has at least one row in
-  # data_for_model
-  combined_coordinates <- gridcoord::gc_expand(time_coord, space_coord)
-  coordinates_not_in_data <- dplyr::anti_join(combined_coordinates,
-                                              df,
-                                              by = c(sc_name, tc_name))
-  if (nrow(coordinates_not_in_data) > 0) {
-    stop_subclass("Some combinations of coordinates have no corresponding rows in ", df_name, ".",
-                  " Use gridcoord::gc_pad to fix this issue",
-                  .subclass = "error_bad_arg_value")
-  }
-  return(invisible(df))
-}
 
 
-validate_data_for_yhat <- function(space_coord, time_coord, data_for_model, data_name) {
-  # Our requirements for yhat:
-  # The time labels must be contiguous subset of the labels in time_coord
-  # Each space label should be associated with the same set of time labels
-  tc_name <- gridcoord::gc_get_name(time_coord)
-  sc_name <- gridcoord::gc_get_name(space_coord)
-  if (any(!c(tc_name, sc_name) %in% colnames(data_for_model))) {
-    stop_subclass(data_name, " must contain the columns ", tc_name, " and ",
-                  sc_name, ". Update either ", data_name, " or space_coord/time_coord",
-                  .subclass = "error_bad_data_yhat")
-  }
 
-  t_labels <- unique(data_for_model[[tc_name]])
-  if (!all(t_labels %in% time_coord[[tc_name]])) {
-    stop_subclass("\nSome of the time points in ", data_name,
-                  " are not included in time_coord",
-                  .subclass = "error_bad_data_yhat")
-  }
-
-  t_inds <- match(t_labels, time_coord[[tc_name]])
-  time_inds_ok <- identical(sort(t_inds), seq(min(t_inds), max(t_inds)))
-  if (!time_inds_ok) {
-    stop_subclass("\n The data.frame ", data_name,
-                  " passed to loop_extract_yhat does not span a contiguous subset of the ",
-                  "time coordinate. Fix either ", data_name, " or time_coord",
-                  "to fix this problem",
-                  .subclass = "error_bad_data_yhat")
-  }
-
-
-  data_split_by_space <- split(data_for_model, data_for_model[[sc_name]])
-  first_set <- data_split_by_space[[1]][[tc_name]]
-  times_the_same <- vapply(data_split_by_space,
-                           function(x) setequal(x[[tc_name]],
-                                                first_set),
-                           logical(1))
-  space_ok <- all(times_the_same)
-  if (!space_ok) {
-    stop_subclass("\n The data.frame ", data_name,
-                  " passed to loop_extract_yhat has different time coordinates associated with ",
-                  "each space coordinate.  Fix either ", data_name, " or space_coord",
-                  "to remove this error",
-                  .subclass = "error_bad_data_yhat")
-  }
-  if (!all(data_for_model[[sc_name]] %in% space_coord[[sc_name]])) {
-    stop_subclass("\nSome of the space points in ", data_name,
-                  "are not included in space_coord",
-                  .subclass = "error_bad_data_yhat")
-  }
-  return(invisible(data_for_model))
-}
-
-throw_model_list_err <- function(list_name) {
-  stop_subclass(list_name, " must be a named list, ",
-                "where all the names are entries in time_coord",
-                .subclass = "error_bad_arg_value")
-}
-
-validate_model_list <- function(model_list, time_coord) {
-  nms <- names(model_list)
-  if (is.null(nms)) {
-    throw_model_list_err(deparse(substitute(model_list)))
-  }
-  if (!all(nms %in% gridcoord::gc_get_labels(time_coord))) {
-    throw_model_list_err(deparse(substitute(model_list)))
-  }
-}
 
 validate_zones <- function(zones, spacetime_data) {
   if (!is.list(zones)) {
@@ -211,4 +110,8 @@ validate_zones <- function(zones, spacetime_data) {
     stop("All entries in ones correspond to values in data$id_space")
   }
   invisible(zones)
+}
+
+is_scalar_numeric <- function(x) {
+  rlang::is_scalar_double(x) || rlang::is_scalar_integer(x)
 }

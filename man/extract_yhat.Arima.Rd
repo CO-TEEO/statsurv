@@ -71,6 +71,29 @@ which uses data frames as the key interface for passing data between functions.
 
 For a version of arima that is based entirely on data frames, see \code{\link{arima_tidy}}.
 }
+\examples{
+data("presidents_df")
+fit_stats_arima <- stats::arima(presidents_df$approval_rating, order = c(2, 0, 0))
+extract_yhat(fit_stats_arima, presidents_df, resp_var = approval_rating)
+
+
+fit_forecast  <- forecast::Arima(presidents_df$approval_rating, order = c(2, 0, 0))
+extract_yhat(fit_forecast, presidents_df)
+# We can extract fitted values and make predictions at the same time
+fit <- stats::arima(presidents_df$approval_rating[1:110], order = c(2, 0, 0))
+extract_yhat(fit, presidents_df, resp_var = approval_rating)
+
+# We can supply an external predictor as well
+fit <- stats::arima(presidents_df$approval_rating[1:110], order = c(2, 0, 0),
+                    xreg = as.matrix(presidents_df[1:110, "election_year", drop = FALSE]))
+extract_yhat(fit, presidents_df, resp_var = approval_rating,
+             newxreg = as.matrix(presidents_df[, "election_year", drop = FALSE]))
+
+# We can use arima_tidy to not have to generate xreg manually
+fit <- arima_tidy(approval_rating ~ election_year, order = c(2, 0, 0),
+                  data = presidents_df[1:110, ])
+extract_yhat(fit, presidents_df)
+}
 \seealso{
 \code{\link{extract_yhat}}  \code{\link[forecast]{simulate.Arima}}
 \code{\link{arima_tidy}} \code{\link{augment.arima_tidy}}
