@@ -1,5 +1,6 @@
-source("build_data_for_alarm_functions.R")
-# Gets us the basic data we need for running a scanstatistics - counts, zones, baselines
+library(here)
+# source(here("tests", "testthat", "setup-alarm_function_data.R"))
+
 score_ebp <- function(y, mu) {
   y <- sum(y)
   mu <- sum(mu)
@@ -16,10 +17,9 @@ test_that("scan_eb_poisson_fast runs", {
 test_that("scan_eb_poisson_fast gives the scores we expect", {
   scanres <- scan_eb_poisson_fast(wide_cases_sm, key_matrix_sm, wide_baseline_sm,
                                  n_mcsim = 1)
-  calc_scores <- scanres$observed %>%
-    pivot_for_scan(value_col = "score", row_coord = "duration", column_coord = "zone")
+  calc_scores <- pivot_scan_results(scanres$observed, score)
   expected_scores <- mapply(score_ebp, wide_cases_sm[2, ], wide_baseline_sm[2, ])
-  expect_equal(flatten(calc_scores[1, ]),
+  expect_equal(unname(unlist(calc_scores[1, ])),
                as.vector(expected_scores))
 })
 

@@ -14,7 +14,7 @@
 #' @return A matrix with the same dimensions as `wide_cases`, where rows indicate time (oldest to
 #'   newst) and columns indicate locations. Element `(i, j) ` indicates the value of the Shewhart
 #'   alarm statistic at time `i` in region `j`. The value of the Shewhart statistic at row `i`
-#'   incorporates informations only from time point `i`.
+#'   incorporates information only from time point `i`.
 #'
 #' @export
 #' @md
@@ -42,6 +42,13 @@ parallel_shewhart_gaussian <- function(wide_cases,
   # wide_cases we expect to be a matrix where columns are the locations and rows are the time
   # periods (oldest to newest)
   # For consistency each alarm function tests things exactly once.
+  ### Argument checks ----
+  stopifnot(is.matrix(wide_cases),
+            is.null(wide_baseline) || is.matrix(wide_baseline),
+            is.numeric(mean),
+            is.numeric(sigma))
+
+
   mean_mat <- pad_cusum_inputs(mean, wide_cases)
   sigma_mat <- pad_cusum_inputs(sigma, wide_cases)
   if (is.null(wide_baseline)) {
@@ -54,6 +61,6 @@ parallel_shewhart_gaussian <- function(wide_cases,
   shewhart_df <- as.data.frame(standardized_residuals)
   colnames(shewhart_df) <- colnames(wide_cases)
   rownames(shewhart_df) <- rownames(wide_cases)
-  return(shewhart_df)
+  return(as.matrix(shewhart_df))
 }
 

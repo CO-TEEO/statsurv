@@ -10,280 +10,167 @@ knitr::opts_chunk$set(
 ## ----setup--------------------------------------------------------------------
 library(statsurv)
 
-## ----data-loading-------------------------------------------------------------
-library("scanstatistics")
-library("lubridate")
-library("gridcoord")
-library("dplyr")
-library("sf")
+## ---- eval = FALSE------------------------------------------------------------
+#  install.packages("remotes")
+#  remotes::install_github("CO-TEEO/statsurv")
 
-data(NM_popcas)
-NM_popcas <- NM_popcas %>%
-  mutate(county = as.character(county))
-head(NM_popcas)
-
-nm_county_fips_2010 <- statsurv::nm_county_fips_2010 %>%
-  mutate(county_name = gsub(" ", "", tolower(county_name))) %>% #Remove spaces, make lower case 
-  rename(county = county_name) %>%
-  dplyr::filter(county != "cibola") %>%
-  gc_gridcoord("county")
+## ----data-loading, message=FALSE----------------------------------------------
+library(scanstatistics)
+library(broom.mixed)
+library(lubridate)
+library(ggplot2)
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(broom)
+library(lme4)
+library(sf)
 
 
+data("NM_county_sf")
+data("NM_data")
 
-yr_start <- min(NM_popcas$year)
-yr_fin <- max(NM_popcas$year)
-date_start <- ymd(paste0(yr_start, "-01-01"))
-date_fin <- ymd(paste0(yr_fin, "-12-31"))
-year_coord <- generate_date_range(date_start, date_fin, time_division = "year") %>%
-  rename(year = date_label) %>%
-  mutate(year = as.numeric(year))
-
-## ----model-1------------------------------------------------------------------
-mod <- glm(count ~ year,
-           family = poisson(link = "log"),
-           offset = log(population),
-           data = NM_popcas)
-
-## ----extract-yhat-------------------------------------------------------------
-expected_cases <- extract_yhat(nm_county_fips_2010, year_coord, mod, NM_popcas)
-plot(factor(expected_cases$county), expected_cases$yhat)
+NM_data <- as_tibble(NM_data) %>%
+  select(-baseline_est) 
+NM_data
 
 ## -----------------------------------------------------------------------------
-expected_case_samples <- sample_yhat(nm_county_fips_2010, year_coord, mod, NM_popcas, 
-                                     n_samples = 20)
-head(as_tibble(expected_case_samples))
+prediction_data <- NM_data %>% 
+  filter(year <= 1989)
 
-## ----scan-eb-pois-------------------------------------------------------------
-wide_cases <- pivot_for_scan(NM_popcas, "count", nm_county_fips_2010, year_coord)
-wide_baseline <- pivot_for_scan(expected_cases, "yhat", nm_county_fips_2010, year_coord)
-zones <- space_coord_to_zones(nm_county_fips_2010, max_k = 10)
+training_data <- prepare_training_data(prediction_data,
+                                         outcome_cols = count, 
+                                         split_id = 14, 
+                                         prep_strategy = "truncate")
 
-scan_res <- scan_eb_poisson(wide_cases, zones, baselines = wide_baseline, n_mcsim = 100)
-print(scan_res)
+## ----model-1------------------------------------------------------------------
+mod <- glm(count ~ I(year - 1985),
+           family = poisson(link = "log"),
+           offset = log(population),
+           data = training_data)
 
-extract_clusters(scan_res, zones, "score", allow_overlap = FALSE, max_allowed = 5)
+## ----extract-yhat-------------------------------------------------------------
+aug_data <- extract_yhat(mod, prediction_data)
+plot(aug_data$count, aug_data$.fitted, xlab = "Observed Counts", ylab = "Model Predictions")
+abline(a = 0, b = 1, col = "blue")
 
-## ----glm-func-----------------------------------------------------------------
-glm_func <- function(space_coord, time_coord, data_for_model) {
-  mod <- glm(count ~ year,
-             family = poisson(link = "log"),
-             offset = log(population),
-             data = data_for_model)
-  to_return <- list(fit = mod,
-                    data = data_for_model)
-  return(to_return)
-}
+## ----model-2------------------------------------------------------------------
+mod2 <- glmer(count ~ I(year - 1985) + (1 | county) + offset(log(population)),
+              family = poisson(link = "log"),
+              data = training_data)
 
-## ----loop-model, message=TRUE-------------------------------------------------
-fits_and_data <- loop_model(space_coord = nm_county_fips_2010, 
-                            time_coord = year_coord, 
-                            data_for_model = NM_popcas, 
-                            outcome_col = "count", 
-                            path_to_model = glm_func, 
-                            use_cache = FALSE, 
-                            min_train = 7)
-all_fits <- fits_and_data[[1]]
-all_data <- fits_and_data[[2]]
+## ----extract-yhat-2-----------------------------------------------------------
+aug_data2 <- extract_yhat(mod2, prediction_data)
+plot(aug_data2$count, aug_data2$.fitted, xlab = "Observed Counts", ylab = "Model Predictions")
+abline(a = 0, b = 1, col = "blue")
 
-## ----loop-extract-yhat, message = TRUE----------------------------------------
-all_yhats <- loop_extract_yhat(space_coord = nm_county_fips_2010,
-                               time_coord = year_coord,
-                               list_of_model_fits = all_fits,
-                               list_of_model_data = all_data,
-                               yhat_extractor_name = "extract",
-                               use_surveillance_residuals = FALSE,
-                               use_cache = FALSE)
+## -----------------------------------------------------------------------------
+zones <- create_zones(NM_county_sf, max_k = 10, min_k = 1)
 
-## ----loop-alarm-function, message = TRUE--------------------------------------
-all_alarms <- loop_alarm_function(space_coord = nm_county_fips_2010,
-                                  time_coord = year_coord,
-                                  list_of_yhats = all_yhats,
-                                  list_of_model_data = all_data,
-                                  outcome_col = "count",
-                                  alarm_function_name = "scan_eb_poisson",
-                                  max_k = 10,
-                                  n_mcsim = 25,
-                                  use_cache = FALSE)
+## -----------------------------------------------------------------------------
+scan_res <- scan_eb_poisson2(aug_data2, outcome_col = count, zones, 
+                             baseline_col = .fitted, n_mcsim = 99)
+scan_res
 
-## ----displaying-results-------------------------------------------------------
-all_coeffs <- list()
-for (ind in seq_len(length(all_fits))) {
-  if (identical(all_fits[[ind]], NA)) {
-    next
-  }
-    curr_label <- names(all_fits)[[ind]]
-    curr_df <- report_model_coeff(all_fits[[ind]])
-    curr_df[["year"]] <- as.numeric(names(all_fits)[[ind]])
-    all_coeffs[[ind]] <- curr_df
-}
-tall_coeff_df <- do.call(rbind, all_coeffs)
-library("ggplot2")
-ggplot(tall_coeff_df, aes(x = year, y = estimate, color = term, group = term)) +
-  geom_point() +
+## -----------------------------------------------------------------------------
+NM_county_sf %>%
+  filter(id_space %in% c(15, 26))
+
+## -----------------------------------------------------------------------------
+windowed_data <- window_idtime(NM_data, min_train = 7, max_train = Inf, n_predict = 3,
+                               step = 1)
+windowed_data
+
+## -----------------------------------------------------------------------------
+windowed_data %>%
+  rowwise() %>%
+  mutate(training_data = list(prepare_training_data(curr_data,
+                                                      outcome_cols = count,
+                                                      split_id = split_id,
+                                                      prep_strategy = "truncate")),
+         mod = list(glmer(count ~ I(year - 1985) + (1 | county) + offset(log(population)),
+                       family = poisson(link = "log"),
+                       data = training_data)))
+
+## -----------------------------------------------------------------------------
+model_fits <- windowed_data %>%
+  rowmute(training_data = prepare_training_data(curr_data, 
+                                                  outcome_col = count,
+                                                  split_id = split_id, 
+                                                  prep_strategy = "truncate"),
+          mod =  glmer(count ~ I(year - 1985) + (1 | county) + offset(log(population)),
+                       family = poisson(link = "log"),
+                       data = training_data))
+
+model_fits
+
+## -----------------------------------------------------------------------------
+model_predictions <- model_fits %>%
+  rowmute(aug_data = extract_yhat(mod, curr_data))
+
+## -----------------------------------------------------------------------------
+scan_results <- model_predictions %>%
+  rowmute(scan_res = scan_eb_poisson2(aug_data, outcome_col = count, zones, 
+                             baseline_col = .fitted, n_mcsim = 99))
+scan_results
+
+## -----------------------------------------------------------------------------
+top_clusters_over_time <- scan_results %>%
+  rowmute(top_cluster = report_top_clusters(scan_res, score, max_reported = 1)) %>%
+  select(window_time_id, top_cluster) %>%
+  unnest(top_cluster)
+
+## -----------------------------------------------------------------------------
+years <- distinct(NM_data[, c("id_time", "year")])
+top_clusters_over_time <- left_join(top_clusters_over_time, years, 
+                                    by = c("window_time_id" = "id_time")) 
+top_clusters_over_time %>%
+  rowmute(counties = NM_county_sf$county[zones[[zone]]]) %>%
+  select(year, duration, score, mc_pvalue, counties) %>%
+  unnest_wider(counties)
+
+
+## -----------------------------------------------------------------------------
+trends_in_zone132 <- scan_results %>%
+  rowmute(all_clusters = report_top_clusters(scan_res, score, max_reported = Inf)) %>%
+  select(window_time_id, all_clusters) %>%
+  unnest(all_clusters) %>%
+  filter(zone == 132) %>%
+  left_join(years, by = c("window_time_id" = "id_time")) 
+
+ggplot(trends_in_zone132, aes(x = year, y = mc_pvalue)) + 
   geom_line() +
-  facet_wrap("term", scales = "free")
-
-## ----extract-clsuters---------------------------------------------------------
-
-mlc <- extract_clusters(all_alarms[["1989"]], zones, max_allowed = 1)
-print(mlc)
-nm_county_fips_2010[zones[[mlc$zone]], ]
-
-## ----extract-stat-------------------------------------------------------------
-alarm_df <- extract_alarm_statistic(nm_county_fips_2010, year_coord, all_alarms, mlc$zone)
-ggplot(alarm_df, aes(x = surveillance_date, y = action_level, color = action_level)) + 
-  geom_point() + 
-  geom_line() + 
-  geom_line(aes(y = upper_control_limit), color = "gray30", linetype = "dashed")
-
+  geom_point()
 
 ## ----new-alarms---------------------------------------------------------------
 # Use the negative binomial scan function instead of the expectation-based poisson
-all_alarms <- loop_alarm_function(space_coord = nm_county_fips_2010,
-                                  time_coord = year_coord,
-                                  list_of_yhats = all_yhats,
-                                  list_of_model_data = all_data,
-                                  outcome_col = "count",
-                                  alarm_function_name = "scan_eb_negbin_fast",
-                                  max_k = 10,
-                                  n_mcsim = 25,
-                                  use_cache = FALSE)
+nb_scan_results <- model_predictions %>%
+  rowmute(scan_res = scan_eb_negbin2(aug_data, outcome_col = count, zones, 
+                                     baseline_col = .fitted, n_mcsim = 99,
+                                     theta_col = 1))
 
 
 ## ----cusum--------------------------------------------------------------------
-all_alarms_x150 <- loop_alarm_function(space_coord = nm_county_fips_2010,
-                                  time_coord = year_coord,
-                                  list_of_yhats = all_yhats,
-                                  list_of_model_data = all_data,
-                                  outcome_col = "count",
-                                  alarm_function_name = "parallel_cusum_poisson",
-                                  max_k = 10,
-                                  n_mcsim = 25,
-                                  use_cache = FALSE)
-all_alarms_x150[["1991"]][1:10, 1:10]
-
-all_alarms_x125 <- loop_alarm_function(space_coord = nm_county_fips_2010,
-                                  time_coord = year_coord,
-                                  list_of_yhats = all_yhats,
-                                  list_of_model_data = all_data,
-                                  outcome_col = "count",
-                                  alarm_function_name = "parallel_cusum_poisson",
-                                  max_k = 10,
-                                  n_mcsim = 25,
-                                  use_cache = FALSE,
-                                  extra_alarm_args = list(scaling = 1.25))
-plot_df1 <- as.data.frame(all_alarms_x150[["1991"]]) %>%
-  tibble::rownames_to_column(var = "year") %>%
-  tidyr::pivot_longer(cols = -year, values_to = "alarm_statistic") %>%
-  mutate(scaling = 1.5)
-
-plot_df2 <- as.data.frame(all_alarms_x125[["1991"]]) %>%
-  tibble::rownames_to_column(var = "year") %>%
-  tidyr::pivot_longer(cols = -year, values_to = "alarm_statistic") %>%
-  mutate(scaling = 1.25)
-plot_df <- rbind(plot_df1, plot_df2)
-ggplot(dplyr::filter(plot_df, name == "santafe"),
-       aes(x = as.numeric(year), y = alarm_statistic, color = factor(scaling), group = scaling)) +
-         geom_point() +
-  geom_line() +
-  ggtitle("CUSUM statistic in Santa Fe")
-
-## ---- eval = FALSE------------------------------------------------------------
-#  extra_alarm_args = list(scaling = 1.25))
-
-## ----model-inla---------------------------------------------------------------
-model_inla_bym <- function(space_coord, time_coord, data_for_model) {
-  library(INLA)
-  
-  neighbors <- spdep::poly2nb(space_coord, queen = FALSE)
-  graph_file <-  tempfile()
-  spdep::nb2INLA(graph_file, neighbors)
-
-  f <- count ~ year +  
-    f(fips_id,
-      model = "bym",
-      graph = graph_file,
-      hyper = list(prec.unstruct = list(prior = "loggamma",
-                                        param = c(3.2761, 1.81)),
-                   prec.spatial = list(prior = "loggamma",
-                                       param = c(1, 1))))
-  fit_inla <- inla(formula = f,
-                        family = "poisson",
-                        data = data_for_model,
-                        control.family = list(link = "log"),
-                        control.compute = list(config = TRUE,
-                                               dic = TRUE),
-                        control.predictor = list(compute=TRUE,
-                                                 link = 1),
-                        offset = offset)
-  
-                        # control.fixed = list(mean = 0,
-                        #                      prec = 0.1)
-  return(list(fit = fit_inla,
-              data = data_for_model))
-}
+cusum_results <- model_predictions %>%
+  rowmute(cumusm_res = parallel_cusum_poisson2(aug_data, count, .fitted))
 
 
-## ---- message = TRUE----------------------------------------------------------
-NM_popcas$fips_id <- gridcoord::gc_get_match(NM_popcas, nm_county_fips_2010)
-fits_and_data <- loop_model(space_coord = nm_county_fips_2010, 
-                            time_coord = year_coord, 
-                            data_for_model = NM_popcas, 
-                            outcome_col = "count", 
-                            path_to_model = model_inla_bym, 
-                            use_cache = FALSE, 
-                            min_train = 7,
-                            n_predict = 1)
-all_fits_inla <- fits_and_data[[1]]
-all_data_inla <- fits_and_data[[2]]
-
-all_yhat_inla <- loop_extract_yhat(space_coord = nm_county_fips_2010,
-                               time_coord = year_coord,
-                               list_of_model_fits = all_fits_inla,
-                               list_of_model_data = all_data_inla,
-                               yhat_extractor_name = "extract",
-                               use_surveillance_residuals = FALSE,
-                               use_cache = FALSE)
-
-all_alarms_inla <- loop_alarm_function(space_coord = nm_county_fips_2010,
-                                       time_coord = year_coord,
-                                       list_of_yhats = all_yhat_inla,
-                                       list_of_model_data = all_data_inla,
-                                       outcome_col = "count",
-                                       alarm_function_name = "scan_eb_poisson",
-                                       max_k = 10,
-                                       n_mcsim = 25,
-                                       use_cache = FALSE)
+## ----INLA---------------------------------------------------------------------
+library(INLA)
+model_fits <- windowed_data %>%
+  rowmute(training_data = prepare_training_data(curr_data, 
+                                                  outcome_col = count,
+                                                  split_id = split_id, 
+                                                  prep_strategy = "NA"),
+          mod =  inla(count ~ I(year - 1985) + f(county, model = "iid"),
+                      family = "poisson",
+                      data = training_data,
+                      offset = log(population),
+                      control.predictor=list(compute = TRUE)))
 
 
-## ----displaying-results-inla--------------------------------------------------
-all_coeffs <- list()
-for (ind in seq_len(length(all_fits_inla))) {
-  if (identical(all_fits[[ind]], NA)) {
-    next
-  }
-    curr_label <- names(all_fits)[[ind]]
-    curr_df <- report_model_coeff(all_fits_inla[[ind]])
-    curr_df[["year"]] <- as.numeric(names(all_fits_inla)[[ind]])
-    all_coeffs[[ind]] <- curr_df
-}
-tall_coeff_df <- do.call(rbind, all_coeffs)
-library("ggplot2")
-ggplot(tall_coeff_df, aes(x = year, y = estimate, color = term, group = term)) +
-  geom_point() +
-  geom_line() +
-  facet_wrap("term", scales = "free")
-
-## ----extract-clsuters-inla----------------------------------------------------
-mlc <- extract_clusters(all_alarms_inla[["1989"]], zones, max_allowed = 1)
-print(mlc)
-nm_county_fips_2010[zones[[mlc$zone]], ]
-
-## ----extract-stat-inla--------------------------------------------------------
-alarm_df <- extract_alarm_statistic(nm_county_fips_2010, year_coord, all_alarms_inla, mlc$zone)
-ggplot(alarm_df, aes(x = surveillance_date, y = action_level, color = action_level)) + 
-  geom_point() + 
-  geom_line() + 
-  geom_line(aes(y = upper_control_limit), color = "gray30", linetype = "dashed")
+## ----INLA-extract-yhat--------------------------------------------------------
+model_fits %>%
+  rowmute(aug_data = extract_yhat(mod, curr_data))
 
 

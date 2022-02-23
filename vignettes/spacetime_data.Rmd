@@ -1,0 +1,249 @@
+---
+title: "Spacetime Data in statsurv"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Spacetime Data in statsurv}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup, message = FALSE}
+library(statsurv)
+library(dplyr)
+```
+
+
+By it's nature, statistical surveillance deals with data over time. In many instances, the data is
+also collected at multiple spatial locations as well. There are a number of sophisticated packages
+for dealing with spacetime data in R, including the [spacetime](https://github.com/edzer/spacetime)
+and [stars](https://r-spatial.github.io/stars/) packages. However, neither of these packages is
+quite right for the needs of the `statsurv` package. They're tricky to work with, often focused on
+raster data, and are generally *way* more powerful than we need. 
+
+Instead, the `statsurv` package represents spacetime data in ordinary data frames that follow some
+specific conventions. These data frames must contain the columns `id_space` and `id_time`, that are
+each a set of consecutive integers. The column `id_time` identifies the time point associated with
+each row of the data frame, with lower numbers being earlier and higher numbers being later. The
+column `id_space` identifies the spatial location or area associated with each row. The specific
+values of `id_space` are not assumed to have any meaning or order beyond identification.
+
+`statsurv` also generally expects the spacetime data to be *complete*, that is, every combination of
+`id_space` and `id_time` is associated with exactly one row in the data frame. This constraint is
+not strictly enforced, but you may get strange results if this is not true.
+
+So this would be a data frame following these conventions:
+
+```{r, echo = TRUE}
+valid_data <- data.frame(id_space = c(1, 2, 1, 2),
+                         id_time = c(1, 1, 2, 2),
+                         y = c(0.4, 0.5, 0.7, 0.8))
+valid_data
+```
+
+And this one would not, because the entries for `id_space` aren't consecutive integers:
+```{r, echo = TRUE}
+invalid_data <- data.frame(id_space = c(1, 2.5, 1, 2.5),
+                           id_time = c(1, 1, 2, 2),
+                           y = c(-1, -2, -0.5, -8))
+invalid_data
+```
+
+If you're even unsure about whether you're data is correctly formatted for `statsurv`, you can call
+the function `validate_spacetime_data`, which will give an error if the data frame does not follow
+the spacetime data conventions:
+```{r, error = TRUE}
+validate_spacetime_data(valid_data)
+
+validate_spacetime_data(invalid_data)
+```
+
+
+## Creating Spacetime data
+
+Often, the hardest part of any data analysis is getting data in the right format. Here are two
+common formats you might have the data in, and how to get it into the right format for the
+`statsurv` package
+
+### Point data
+
+Often, the underlying data comes as a series of points. For example, elevated blood lead levels are
+reported based on a geo-coded address and a date. To work with this data in `statsurv`, the point
+data needs to be aggregated in both space and time.
+
+Suppose we had the following set of data, with raw latitude, longitude, and date, and we wanted to
+assign these points to a month and a county in New Mexico:
+
+```{r, echo = TRUE}
+point_data <- data.frame(lat = c(34.579, 36.382, 35.863, 32.539, 34.876, 38.876),
+                         lon = c(-105.143, -106.882, -103.552, -108.089, -106.454, -106.454),
+                         date = c("03/14/19", "2/11/19", "4/4/19", "5/8/19", "7/10/19", "2/12/19"),
+                         y = runif(6, min = 0, max = 9))
+point_data             
+```
+
+One way to do this is with the `sf` and `lubridate` packages. To assign the points to a county, 
+first we need to load up the county boundaries:
+
+```{r, message = FALSE}
+library(sf)
+data("NM_county_sf")
+```
+
+Then, we convert our point data into an sf, use a spatial join to assign them to counties, and then 
+use `match` to convert county names into an id:
+
+```{r}
+geo_data <- st_as_sf(point_data, 
+                   coords = c("lon", "lat"),
+                   crs = "+proj=longlat",
+                   remove = FALSE)
+
+geo_data <- geo_data %>%
+  st_transform(st_crs(NM_county_sf))
+
+geo_data_w_county <- st_join(geo_data, NM_county_sf) %>%
+  filter(!is.na(county)) %>%
+  mutate(id_space = match(county, unique(county)))
+geo_data_w_county
+```
+
+Assigning points to months is a little more straightforward. We need to convert our characters
+to dates, use `floor_date` to figure out which month a date belongs to, and then convert that date
+to a number. For the last step we can use the function `match`, but we have to be careful if there
+are gaps in our data.
+
+The first steps are the same for both methods:
+
+```{r}
+library(lubridate)
+curr_data <- geo_data_w_county %>%
+  mutate(date = mdy(date),
+         month_date = floor_date(date, unit = "month"))
+```
+
+If there are no gaps in your data, then we can do it all in one line:
+```{r}
+option1 <- curr_data %>%
+  mutate(id_time = match(month_date, sort(unique(month_date))))
+option1
+```
+
+The other option is to calculate our dates explicitly:
+
+```{r}
+time_levels <- seq(min(curr_data$month_date), max(curr_data$month_date), by = "month")
+option2 <- curr_data %>%
+  mutate(id_time = match(month_date, time_levels))
+option2
+```
+
+Since we have gaps in our data, `option2` is better in this example. We can then aggregate our
+data for use in statistical surveillance:
+
+```{r}
+aggregated_data <- option2 %>%
+  st_drop_geometry() %>%
+  group_by(id_space, id_time) %>%
+  summarize(y = sum(y))
+
+aggregated_data
+```
+
+However, we still don't have valid spacetime data, because we have gaps in `id_time`. So we can pad 
+our data frame:
+
+```{r}
+coord_df <- expand.grid(id_space = unique(aggregated_data$id_space),
+                         id_time = 1:max(aggregated_data$id_time))
+padded_aggregated_data <- full_join(aggregated_data, coord_df) %>%
+  arrange(id_space, id_time)
+padded_aggregated_data
+
+validate_spacetime_data(padded_aggregated_data)
+```
+That's a little annoying to do by hand, so we could also use the function `pad_spacetime_data` to do
+it automatically:
+```{r}
+padded_aggregated_data <- pad_spacetime_data(aggregated_data)
+validate_spacetime_data(padded_aggregated_data)
+```
+
+### sf data
+
+Another situation is where the data is stored as an sf object with an additional field for time. 
+
+```{r, include = FALSE}
+NM_sample_sf <- NM_county_sf %>%
+  dplyr::slice(rep(1:n(), each = 3)) %>%
+  group_by(county) %>%
+  mutate(date = ymd("2022-01-01", "2022-02-01", "2022-03-1")[row_number()],
+         y = runif(n = n())) %>%
+  ungroup() %>%
+  select(y, date, county) %>%
+  st_sf() %>%
+  st_make_valid()
+```
+
+As an example, let's take this example with fake data from New Mexico. We have 3 time points for
+each geometry, as well as the county name.
+
+```{r}
+NM_sample_sf
+```
+
+Because we have the county name, we can ignore the geometry and create `id_space` based on the county names. 
+
+```{r}
+NM_sample_sf_id <- NM_sample_sf %>%
+  mutate(id_space = match(county, unique(county)),
+         id_time = match(date, sort(unique(date))))
+NM_sample_sf_id
+```
+
+It's often also easier to split the data into two tables, one with the aggregated data, and one with
+the spatial information
+
+```{r}
+NM_sample_data <- NM_sample_sf_id %>%
+  st_drop_geometry()
+
+NM_sample_geom <- NM_sample_sf_id %>%
+  select(id_space) %>%
+  group_by(id_space) %>%
+  slice_head(n = 1)
+
+NM_sample_data
+
+NM_sample_geom
+```
+
+
+But what if we don't have any labels for the spatial areas, beyond the geometries?
+Well then it's a little trickier, but still manageable. 
+
+We can select only the distinct geometries, and assign each one an id_space:
+
+```{r}
+NM_geometries <- NM_sample_sf %>%
+  distinct(geometry) 
+NM_geometries$id_space <- 1:nrow(NM_geometries)
+```
+
+Then we use an st_join to line them up with the sample data:
+```{r}
+NM_spacetime_data <- st_join(NM_sample_sf, NM_geometries, join = st_equals) %>%
+  mutate(id_time = match(date, sort(unique(date))))
+validate_spacetime_data(NM_spacetime_data)
+```
+
+Finally, we have data organized in the way that `statsurv` expects. Maybe not as quickly or as
+easily as we expected though. For better or for worse though, most of the difficulty comes from
+having to aggregate the data into spatial areas and time blocks. Once you've done that, it should
+just take a couple `mutate`/`match` calls to get it into the form expected by `statsurv`.

@@ -2,68 +2,57 @@
 % Please edit documentation in R/scanstatistics_helpers.R
 \name{pivot_for_scan}
 \alias{pivot_for_scan}
-\title{Turn a long data.frame into a wide matrix}
+\title{Turn a long data frame into a wide matrix}
 \usage{
-pivot_for_scan(df, value_col, column_coord, row_coord)
+pivot_for_scan(spacetime_data, value_col)
 }
 \arguments{
-\item{df}{A long (a.k.a. tidy) data.frame.}
+\item{spacetime_data}{A data frame or a data frame extension (e.g., a tibble) that includes
+columns `id_space` and `id_time` that are each a set of consecutive integers. The column
+`id_time` identifies the time point associated with each row, with lower numbers being earlier
+and higher numbers being later. The column `id_space` identifies the spatial location or area
+associated with each row, but no meaning or order is ascribed to the values.}
 
-\item{value_col}{The name of the column that contains the data to be pivoted into the wide
-matrix. All columns other than \code{value_col} in \code{df} will be discarded.}
-
-\item{column_coord, row_coord}{The columns in \code{df} that will become the column or row names of the
-returned matrix. These can each be either a \itemize{
-\item A character string, specifying the name of the column in \code{df}. In this case, the column
-in \code{df} must be sortable, and columns or rows in the returned matrix will be sorted from first
-to last.
-\item A \code{\link[gridcoord:gc_gridcoord]{gridcoord}} object corresponding to a column in
-\code{df}. In this case, the rows or columns in the returned matrix will be arranged to match the
-order of the labels in the gridcoord object.
-}}
+\item{value_col}{An expression defining the values in in \code{spacetime_data} to be pivoted into the
+wide matrix. This argument uses
+\href{https://dplyr.tidyverse.org/reference/dplyr_data_masking.html}{data masking} and should
+be specified as bare code (not a string). Can also be a scalar, in which case all entries in
+the wide matrix will be equal to \code{value_col}.}
 }
 \value{
-A matrix, with rows corresponding to entries in \code{row_coord} and columns corresponding to
-\code{column_coord}.
+A matrix, with rows corresponding to values of \code{id_time} and columns corresponding to
+\code{id_space}. Exception: if \code{value_col = NULL}, then returns NULL.
 }
 \description{
-A friendly wrapper for \code{\link[tidyr]{pivot_wider}} that takes a long
-data.frame and transforms it into a wide matrix. This is the format for data used by the
-\code{\link[scanstatistics]{scanstatistics}} package and other scan-type alarm functions.
+A friendly wrapper for \code{\link[tidyr]{pivot_wider}} that takes a long data.frame
+and transforms it into a wide matrix. This is the format expected as input for the #'
+\code{\link[scanstatistics]{scanstatistics}} package.
 }
 \details{
-\code{df} must contain at least 3 columns, containing the values, column names, and rownames
-respectively. Many scan-type alarm functions take input data in the form of a matrix where the
-rows correspond to time (organized from earliest to latest) and the columns correspond to
-space.
+Functions for calculating scan statistics in the
+\code{\link[scanstatistics]{scanstatistics}} package expect case counts and baseline estimates
+to be formatted as matrices, where the rows correspond to time (organized from earliest to
+latest) and the columns correspond to space.
 
-\code{pivot_for_scan} is best used for complete datasets, where every combination of \code{row_coord} and
-\code{column_coord} is associated with exactly one value. If there are multiple values associated with
-a particular combination of \code{row_coord} and \code{column_coord}, \code{pivot_for_scan} will give a warning
-and return a matrix where some of the entires are lists. If there a no values
-associated with a combination of \code{row_coord} and \code{column_coord} with no corresponding value in
-\code{df}, then that entry in the returned matrix will be \verb{<NA>}. However, if the returned matrix
-would have entire rows or columns filled with only \verb{<NA>}, these are silently removed.
+\code{pivot_for_scan} takes \code{spacetime_data}, and pivots the data into that format. The rows are
+ordered by the \code{id_time} column from smaller to largest, and the columns are ordered by the
+\code{id_space} column in \code{spacetime_data}, also from smallest to largest. \code{pivot_for_scan} expects
+the data to be complete, so that every combination of \code{id_space} and \code{id_time} is associated with
+exactly one value. If some combination of \code{id_space} and \code{id_time} has no corresponding value in
+\code{spacetime_data}, then that entry in the returned matrix will be \verb{<NA>}.
 }
 \examples{
 df <- data.frame(vals = c(1, 2, 3, 4, 5, 6),
-                 space = c("s1", "s2", "s3", "s1", "s2", "s3"),
-                 time = c("t1", "t1", "t1", "t2", "t2", "t2"),
-                 stringsAsFactors = FALSE)
+                 id_space = rep(1:3, 2),
+                 id_time = rep(1:2, each = 3))
 
-pivot_for_scan(df, "vals", "space", "time")
+pivot_for_scan(df, vals)
+
 
 # Non-exist combinations create NA's
 incomplete_df <- df[1:5, ]
-pivot_for_scan(incomplete_df, "vals", "space", "time")
+pivot_for_scan(incomplete_df, vals)
 
-# gridcoords can rearrange the rows or columns of the matrix
-space_coord <- data.frame(space = c("s2", "s3", "s1"),
-                          stringsAsFactors = FALSE)
-pivot_for_scan(df, "vals", space_coord, "time")
-
-# Extra rows/columns are silently dropped
-time_coord <- data.frame(time = c("t1", "t2", "t3"),
-                         stringsAsFactors = FALSE)
-pivot_for_scan(df, "vals", "space", time_coord)
+# Returns NULL:
+pivot_for_scan(df, NULL)
 }

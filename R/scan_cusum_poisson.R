@@ -29,7 +29,7 @@
 #'   Sonesson, C. (2007). \emph{A CUSUM framework for detection of space-time disease clusters using
 #'   scan statistics}, Stat Med 26(26): 4770-4789.
 #' @seealso \code{\link{parallel_cusum_poisson}}, \code{\link{pivot_for_scan}},
-#'   \code{\link{build_key_matrix}}
+#'   \code{\link{zones_to_key_matrix}}
 #' @export
 #' @md
 #' @examples
@@ -42,7 +42,7 @@
 #' zones <- geo %>%
 #'   scanstatistics::coords_to_knn(k = 4) %>%
 #'   scanstatistics::knn_zones()
-#' key_matrix <- build_key_matrix(zones)
+#' key_matrix <- zones_to_key_matrix(zones)
 #' outbreak_sp <- c(1, 2, 4, 5)
 #' outbreak_tm <- c(3, 4)
 #' wide_cases <- matrix(2, nrow = 4, ncol = 9)
@@ -118,7 +118,7 @@ scan_cusum_poisson <- function(wide_cases,
     }
     ### Argument Checks #########################################
     if (is.list(key_matrix)) {
-        key_matrix <- build_key_matrix(key_matrix)
+        key_matrix <- zones_to_key_matrix(key_matrix)
     }
 
     ### The actual computation #########################
@@ -136,7 +136,7 @@ scan_cusum_poisson <- function(wide_cases,
     incontrol_zone_list <- mat_to_list(incontrol_zone_mat) # Convert matrices to lists for speed
     drift_zone_list <- mat_to_list(drift_zone_mat)
 
-    zones <- build_zones(key_matrix)
+    zones <- key_matrix_to_zones(key_matrix)
     scan_res <- single_scan(wide_cases,
                             key_matrix,
                             drift_zone_list,

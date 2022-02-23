@@ -1,0 +1,9 @@
+Maybe write a vignette on using ARIMA models with the package? 
+
+Tests, documentation, and examples for pad_spacetime_data
+
+Figure out what we're doing with scanstatistics
+
+Lintr
+
+R Cmd check

@@ -19,14 +19,13 @@
 #'   \lambda(\delta - 1) / (log(\delta)}.
 #'
 #'
-#'
 #' @return A matrix with the same dimensions as `wide_cases`, where rows indicate time (oldest to
-#'   newst) and columns indicate locations. Element `(i, j) ` indicates the value of the CUSUM
+#'   newest) and columns indicate locations. Element `(i, j) ` indicates the value of the CUSUM
 #'   statistic at time `i` in region `j`. The value of the CUSUM statistic at row `i` incorporates
-#'   informations from time points `1` thought `i`.
+#'   information from time points `1` thought `i`.
 #'
 #' @seealso \code{\link{scan_cusum_poisson}}, \code{\link{pivot_for_scan}},
-#'   \code{\link{build_key_matrix}}, \code{\link{parallel_cusum_gaussian}}
+#'   \code{\link{parallel_cusum_gaussian}}
 #' @export
 #' @md
 #' @examples
@@ -53,9 +52,9 @@ parallel_cusum_poisson <- function(wide_cases,
                                    scaling = 1.5) {
 
   ### Argument checks ----
-  check_type(wide_cases, "matrix")
-  check_type(wide_cases, c("matrix"))
-  check_type(scaling, "numeric")
+  stopifnot(is.matrix(wide_cases),
+            is.matrix(wide_baseline),
+            is.numeric(scaling))
 
   ### Computations ----
   t_wide_cases <- t(wide_cases)
@@ -81,7 +80,7 @@ parallel_cusum_poisson <- function(wide_cases,
   wide_cusum_df <- t(cusum_df)
   colnames(wide_cusum_df) <- colnames(wide_cases)
   rownames(wide_cusum_df) <- rownames(wide_cases)
-  return(wide_cusum_df)
+  return(as.matrix(wide_cusum_df))
 }
 
 #' @title Calculate the Gaussian CUSUM statistic over multiple spatial regions
@@ -129,17 +128,17 @@ parallel_cusum_poisson <- function(wide_cases,
 #'                                    sigma = m_sigma,
 #'                                    drift = 0.5)
 parallel_cusum_gaussian <- function(wide_cases,
-                                    wide_baseline,
+                                    wide_baseline = NULL,
                                     mean = 0,
                                     sigma = 1,
                                     drift = 0.5) {
 
   ### Argument checks ----
-  check_type(wide_cases, "matrix")
-  check_type(wide_cases, c("NULL", "matrix"))
-  check_type(mean, "numeric")
-  check_type(sigma, "numeric")
-  check_type(drift, "numeric")
+  stopifnot(is.matrix(wide_cases),
+            is.null(wide_baseline) || is.matrix(wide_baseline),
+            is.numeric(mean),
+            is.numeric(sigma),
+            is.numeric(drift))
 
   ### Actual computation ----
   mean_mat <- pad_cusum_inputs(mean, wide_cases)
@@ -169,7 +168,7 @@ parallel_cusum_gaussian <- function(wide_cases,
   wide_cusum_df <- t(cusum_df)
   colnames(wide_cusum_df) <- colnames(wide_cases)
   rownames(wide_cusum_df) <- rownames(wide_cases)
-  return(wide_cusum_df)
+  return(as.matrix(wide_cusum_df))
 }
 
 pad_cusum_inputs <- function(x, wide_cases) {

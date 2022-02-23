@@ -12,7 +12,7 @@
 #' @param key_matrix A matrix specifying how which locations belong to each zone. Each row is a
 #'   different zone and each column is a location. An element `(i,j)` is 1 if location `j` is part
 #'   of zone `i` and is 0 otherwise. Can be generated from a list specifying zones using the
-#'   \code{\link{build_key_matrix}} function.
+#'   \code{\link{zones_to_key_matrix}} function.
 #' @param wide_baseline A matrix of the same dimensions as `wide_cases`, holding the expected value
 #'   of cases at each space-time location.This value is typically estimated from past data using a
 #'   GLM or other model.
@@ -27,7 +27,7 @@
 #'   the square root in the denominator.
 #'
 #' @seealso \code{\link[scanstatistics]{scan_eb_negbin}}, \code{\link{pivot_for_scan}},
-#'   \code{\link{build_key_matrix}}
+#'   \code{\link{zones_to_key_matrix}}
 #' @export
 #' @md
 #' @examples
@@ -40,7 +40,7 @@
 #' zones <- geo %>%
 #'   scanstatistics::coords_to_knn(k = 4) %>%
 #'   scanstatistics::knn_zones()
-#' key_matrix <- build_key_matrix(zones)
+#' key_matrix <- zones_to_key_matrix(zones)
 #' outbreak_sp <- c(1, 2, 4, 5)
 #' outbreak_tm <- c(3, 4)
 #' wide_cases <- matrix(2, nrow = 4, ncol = 9)
@@ -76,7 +76,7 @@ scan_eb_negbin_fast <- function(wide_cases, key_matrix, wide_baseline,
 
   ### Argument Checks #########################################
   if (is.list(key_matrix)) {
-    key_matrix <- build_key_matrix(key_matrix)
+    key_matrix <- zones_to_key_matrix(key_matrix)
   }
   ### Computations ##################################
   key_matrix <- Matrix::Matrix(key_matrix)
@@ -91,7 +91,7 @@ scan_eb_negbin_fast <- function(wide_cases, key_matrix, wide_baseline,
   wide_baseline <- flip_df(wide_baseline)
   if (is.matrix(thetas)) {
     wide_thetas <- flip_df(thetas)
-  } else if (check_scalar_type(thetas, "numeric", FALSE)) {
+  } else if (is_scalar_numeric(thetas)) {
     wide_thetas <- matrix(thetas, nrow = nrow(wide_cases), ncol = ncol(wide_cases))
   } else {
     stop("thetas must either be a matrix with the same dimensions as wide_cases or a scalar")

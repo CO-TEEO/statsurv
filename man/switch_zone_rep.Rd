@@ -2,13 +2,13 @@
 % Please edit documentation in R/scanstatistics_helpers.R
 \name{switch_zone_rep}
 \alias{switch_zone_rep}
-\alias{build_key_matrix}
-\alias{build_zones}
+\alias{zones_to_key_matrix}
+\alias{key_matrix_to_zones}
 \title{Change how spatial zones are represented}
 \usage{
-build_key_matrix(zones)
+zones_to_key_matrix(zones)
 
-build_zones(key_matrix)
+key_matrix_to_zones(key_matrix)
 }
 \arguments{
 \item{zones}{A list where each entry is a zone. Each entry is a vector containing the indices of
@@ -18,9 +18,9 @@ the spatial locations in that zone.}
 \verb{[i, j]} is 1 if location \code{j} is a part of zone \code{i} and 0 otherwise.}
 }
 \value{
-For \code{build_key_matrix}, a matrix. To increase speed, the matrix is represented as a
-sparse matrix from the \code{\link[Matrix]{Matrix}} package. For \code{build_zones}, a list of
-zones.
+For \code{zones_to_key_matrix}, a matrix. To increase speed, the matrix is represented as a
+sparse matrix from the \code{\link[Matrix]{Matrix}} package. For \code{create_zones}, and
+\code{key_matrix_to_zones} a list of zones.
 }
 \description{
 Scan-type alarm functions work by computing an alarm function over a very large
@@ -29,18 +29,20 @@ locations. Information about which spatial locations belong to which zone can be
 the form of a list, where each entry in the list contains the indexes of the locations in a
 particular zone, or in the form of a matrix, where each row represents a zone and each column
 represents a location. A set of zones can be generated using the
-\code{\link{space_coord_to_zones}} function, and conversion between the list- and
+\code{\link{create_zones}} function, and conversion between the list- and
 matrix-representation of the zones is accomplished through the functions
-\code{build_key_matrix} and \code{build_zones}.
+\code{zones_to_key_matrix} and \code{key_matrix_to_zones}.
 }
 \examples{
-space_coord <- co_county_fips_2019
-zones <- space_coord_to_zones(space_coord, max_k = 5)
-key_matrix <- build_key_matrix(zones)
+library("sf")
+data("NM_county_sf")
 
-zones <- build_zones(key_matrix)
+zones <- create_zones(NM_county_sf, max_k = 5)
+key_matrix <- zones_to_key_matrix(zones)
+
+zones <- key_matrix_to_zones(key_matrix)
 }
 \seealso{
-\code{\link{space_coord_to_zones}},
+\code{\link{create_zones}},
 \code{\link[scanstatistics]{knn_zones}}, \code{\link[scanstatistics]{dist_to_knn}}
 }

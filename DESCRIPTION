@@ -1,6 +1,6 @@
 Package: statsurv
 Title: Tools for Spatiotemporal Statistical Surveillance
-Version: 0.2.0.9000
+Version: 0.3.0
 Authors@R:
     person(given = "Paul",
            family = "Romer Present",
@@ -15,18 +15,12 @@ Description: A set of tools for performing routine statistical surveillance.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
+URL: https://github.com/CO-TEEO/statsurv
+BugReports: https://github.com/CO-TEEO/statsurv/issues
 Imports:
-    lubridate,
-    gridcoord,
-    raster,
-    sp,
     rlang,
     tibble,
-    spdep,
-    scanstatistics,
-    arm,
-    broom,
-    simplecache,
+    scanstatistics (>= 1.0.2),
     magrittr,
     dplyr,
     tidyr,
@@ -34,7 +28,16 @@ Imports:
     Matrix,
     MASS,
     stats,
-    sf
+    sf,
+    slider,
+    progressr,
+    vctrs,
+    generics,
+    broom,
+    broom.mixed,
+    purrr,
+    ismev,
+    reliaR
 Suggests:
     testthat (>= 2.1.0),
     knitr,
@@ -42,8 +45,13 @@ Suggests:
     forecast,
     rgdal,
     INLA,
-    lme4
-RoxygenNote: 7.1.0
+    lme4,
+    lubridate,
+    here,
+    ggplot2
+RoxygenNote: 7.1.2
 VignetteBuilder: knitr
 Depends: 
     R (>= 2.10)
+Remotes: 
+    BenjaK/scanstatistics

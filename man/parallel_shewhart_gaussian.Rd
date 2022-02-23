@@ -28,7 +28,7 @@ GLM or other model.}
 A matrix with the same dimensions as \code{wide_cases}, where rows indicate time (oldest to
 newst) and columns indicate locations. Element \verb{(i, j) } indicates the value of the Shewhart
 alarm statistic at time \code{i} in region \code{j}. The value of the Shewhart statistic at row \code{i}
-incorporates informations only from time point \code{i}.
+incorporates information only from time point \code{i}.
 }
 \description{
 \code{parallel_cusum_gaussian} calculates the value of the Shewhart alarm statistic

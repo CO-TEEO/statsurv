@@ -1,75 +1,97 @@
 # This is an experiment. It's less about checking for correctness, and more checking for no errors
 suppressWarnings(library("lubridate"))
 suppressWarnings(library("forecast"))
+suppressWarnings(library("dplyr"))
+
+# source(here::here("tests", "testthat", "setup-cdc_se_calc.R"))
 
 test_that("Integration test for ARIMA + HSR", {
   skip_on_cran()
-  skip_if_not(forecast_available)
+  skip_if_not_installed("forecast")
 
 
+  create_xreg <- function(spacetime_data) {
+    df <- spacetime_data
 
-  space_coord <- generate_study_area(space_division = "co_hsr_2019")[1:5, ]
-  time_coord <- generate_date_range(start_date = ymd("2016-01-01"),
-                                    end_date = ymd("2019-12-31"),
-                                    "month")
+    xreg <- as.matrix(x = df[, c("offset", "months_since_4", "x")])
+    return(xreg)
+  }
+  create_xreg <<- create_xreg
 
-  # Ok, now we have to come up with data.
-  # There should be some covriates that vary with time, there should be an overall drift.
+  model_arima <- function(spacetime_data, xreg) {
+    library("forecast")
 
-  space_data <- data.frame(hsr = space_coord$hsr,
-                           stringsAsFactors = FALSE)
-  space_data$offset <- runif(nrow(space_data), max = 30)
 
-  time_data <- data.frame(date_label = time_coord[[1]],
-                          stringsAsFactors = FALSE)
-  time_data$months_since_14 <- seq_len(nrow(time_data))
+    fit_arima <- forecast::Arima(spacetime_data$y,
+                                 order = c(1,0,0),
+                                 method = "ML",
+                                 include.mean = FALSE,
+                                 transform.pars = FALSE,
+                                 xreg = xreg)
 
-  data <- gridcoord::gc_expand(space_data, time_coord) %>%
-    dplyr::left_join(y = time_data, by = "date_label")
-  data$x <- rnorm(mean = 6, sd = 3, n = nrow(data))
+    return(fit_arima)
+  }
+  model_arima <<- model_arima
+
+  spacetime_data <- expand.grid(id_space = 1:5,
+                                id_time = 1:48) %>%
+    dplyr::mutate(offset = runif(n = 5, max = 30)[id_space],
+                  months_since_4 = pmax(id_time - 4, 0),
+                  x = rnorm(mean = 6, sd = 3, n = dplyr::n()))
 
   # Split, generate y
   gen_y <- function(df) {
     n <- nrow(df)
     nu <- as.numeric(arima.sim(list(ar = c(0.9, -0.2)), n = n))
-    df$y <- 3 + 2.5 * df$x + df$offset + -0.3 * df$months_since_14 + nu
+    df$y <- 3 + 2.5 * df$x + df$offset + -0.3 * df$months_since_4 + nu
     df
   }
-  data <- split(data, data$hsr) %>%
+  spacetime_data <- split(spacetime_data, spacetime_data$id_space) %>%
     lapply(gen_y) %>%
     do.call(what = rbind)
-  rownames(data) <- NULL
+  rownames(spacetime_data) <- NULL
 
-  fits_and_data <- loop_model(space_coord, time_coord, data, "y",
-                              path_to_model = "model_arima.R",
-                              model_arity = "uni", use_cache = FALSE)
-
-  all_fits <- fits_and_data[[1]]
-  all_data <- fits_and_data[[2]]
-  all_xreg <- fits_and_data[[3]]
-
-  all_yhat <- loop_extract_yhat(space_coord, time_coord,
-                                all_fits, all_data, "extract",
-                                path_to_model = "model_arima.R",
-                                use_cache = FALSE,
-                                extra_extractor_args = list(xreg = all_xreg, n_ahead = 1))
+  windowed_data <- spacetime_data %>%
+    window_idtime(min_train = 7, max_train = 24,
+                  split_spatial_locations = TRUE,
+                  n_predict = 1) %>%
+    rowmute(training_data = prepare_training_data(curr_data, y, split_id, "truncate"),
+            xreg = create_xreg(training_data))
+  fitted_results <- windowed_data %>%
+    rowmute(arima_fit = model_arima(training_data, xreg))
 
 
-  source("cdc_se_calc.R")
-  all_v <- loop_over(space_coord, time_coord,
-                     all_fits,
-                     function(x) sqrt(median(compute_arima_se(x, add_intercept = FALSE))),
-                     title = "Calculating model errors")
-  flat_v <- lapply(gridcoord::gcl_collapse(all_v, "space", return_gridlist = FALSE),
-                   function(x) mean(x$values))
-  all_scanres <- loop_alarm_function(space_coord, time_coord,
-                                     list_of_yhats = all_yhat,
-                                     list_of_model_data = all_data,
-                                     outcome_col = "y",
-                                     alarm_function_name = "parallel_cusum_gaussian",
-                                     path_to_model = "model_arima.R",
-                                     extra_alarm_args = list(sigma = flat_v, drift = 1))
+  predictions <- fitted_results %>%
+    rowmute(xreg2 = create_xreg(curr_data)) %>%
+    rowmute(aug_data = extract_yhat(arima_fit, curr_data, xreg2))
 
-  expect_true(is.list(all_scanres))
-  unlink("cache_alarm", recursive = TRUE)
+
+
+
+  pred_w_err <- predictions %>%
+    rowmute(v = sqrt(median(compute_arima_se(arima_fit, add_intercept = FALSE))))
+
+  collapsed_pred_w_err <- pred_w_err %>%
+    group_by(window_time_id) %>%
+    collapse_all(unlist_scalars = TRUE) %>%
+    rowmute(avg_v = mean(v))
+
+  all_scanres <-
+    collapsed_pred_w_err %>%
+    rowmute(alarm_res = parallel_cusum_gaussian2(aug_data, outcome_col = y, baseline_col = .fitted,
+                                                 sigma = avg_v, drift = 1))
+
+
+
+
+  big_df <- all_scanres %>%
+    ungroup() %>%
+    select(window_time_id, alarm_res) %>%
+    tidyr::unnest(alarm_res)
+  surv_df <- big_df %>%
+    group_by(window_time_id) %>%
+    slice_max(id_time)
+
+  expect_true(is.list(all_scanres$alarm_res))
+  expect_true(is.data.frame(surv_df))
 })

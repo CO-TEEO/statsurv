@@ -1,75 +1,60 @@
-# What does pivot_for_scan do?
-# How does it fail if we give it weird inputs?
-
-df <- data.frame(vals = c(1, 2, 3, 4, 5, 6),
-                 space = c("s1", "s2", "s3", "s1", "s2", "s3"),
-                 time = c("t1", "t1", "t1", "t2", "t2", "t2"),
-                 stringsAsFactors = FALSE)
-
-expected <- matrix(c(1, 2, 3, 4, 5, 6), nrow = 2, byrow = 2)
-rownames(expected) <- c("t1", "t2")
-colnames(expected) <- c("s1", "s2", "s3")
+library(here)
+# source(here("tests", "testthat", "setup-alarm_function_data.R"))
 
 test_that("pivot_for_scan works", {
-  # Gives a matrix, rows are time, columns are space
-  res <- pivot_for_scan(df, "vals", "space", "time")
-  expect_equal(res, expected)
+  res <- pivot_for_scan(spacetime_data_lg, cases)
+  expect_equal(unname(res), wide_cases_lg)
+  expect_equal(colnames(res), paste(1:9))
+  expect_equal(rownames(res), paste(1:4))
 })
 
-test_that("Warning if non-unique", {
-  non_unique_df <- df
-  non_unique_df[2, "space"] <- "s1"
-  expect_warning(pivot_for_scan(non_unique_df, "vals", "space", "time"),
-                 "unique")
+test_that("Error if non-unique", {
+  non_unique_df <- spacetime_data_lg
+  non_unique_df[2, "id_space"] <- 1
+  expect_error(pivot_for_scan(non_unique_df, cases), class = "error_bad_spacetimedata")
 })
 
 
 test_that("Pads with NAs if incomplete", {
-  incomplete_df <- df[1:5, ]
-  res <- pivot_for_scan(incomplete_df, "vals", "space", "time")
-  expected2 <- expected
-  expected2[2, 3] <- NA
-  expect_equal(res, expected2)
+  incomplete_df <- spacetime_data_lg[1:34, ]
+  res <- pivot_for_scan(incomplete_df, cases)
+  expected2 <- wide_cases_lg
+  expected2[4, 8:9] <- NA
+  expect_equal(unname(res), expected2)
+  expect_equal(colnames(res), paste(1:9))
+  expect_equal(rownames(res), paste(1:4))
 })
 
-test_that("Passing a gridcoord rearranges the columns", {
-  space_coord <- data.frame(space = c("s2", "s3", "s1"),
-                            stringsAsFactors = FALSE)
-  res <- pivot_for_scan(df, "vals", space_coord, "time")
-  expect_equal(res, expected[, c(2, 3, 1)])
 
-  time_coord <- data.frame(time = c("t2", "t1"),
-                           stringsAsFactors = FALSE)
-  res <- pivot_for_scan(df, "vals", "space", time_coord)
-  expect_equal(res, expected[c(2, 1), ])
-
-  res <- pivot_for_scan(df, "vals", space_coord, time_coord)
-  expect_equal(res, expected[c(2, 1), c(2, 3, 1)])
+test_that("Order of the rows doesn't matter", {
+  res <- pivot_for_scan(spacetime_data_lg, cases)
+  for (i in 1:10) {
+    res2 <- pivot_for_scan(dplyr::slice_sample(spacetime_data_lg, prop = 1), cases)
+    expect_equal(res, res2)
+  }
 })
 
-test_that("Extra rows are silently removed", {
-  time_coord <- data.frame(time = c("t1", "t2", "t3"),
-                           stringsAsFactors = FALSE)
-  expect_equal(pivot_for_scan(df, "vals", "space", time_coord),
-               expected)
+test_that("We can do this with any column", {
+ res <- pivot_for_scan(spacetime_data_lg, cases)
+ expect_equal(unname(res), wide_cases_lg)
 
-  time_coord <- data.frame(time = c("t2", "t1", "t3"),
-                           stringsAsFactors = FALSE)
-  expect_equal(pivot_for_scan(df, "vals", "space", time_coord),
-               expected[c(2, 1), ])
+ res <- pivot_for_scan(spacetime_data_lg, .fitted)
+ expect_equal(unname(res), wide_baseline_lg)
 
+ res <- pivot_for_scan(spacetime_data_lg, pop)
+ expect_equal(unname(res), wide_pop_lg)
+
+ res <- pivot_for_scan(spacetime_data_lg, probs)
+ expect_equal(unname(res), wide_probs_lg)
+
+ res <- pivot_for_scan(spacetime_data_lg, thetas)
+ expect_equal(unname(res), wide_thetas_lg)
+
+ res <- pivot_for_scan(spacetime_data_lg, id_space)
+ expected <- matrix(1:9, nrow = 4, ncol = 9, byrow = TRUE)
+ expect_equal(unname(res), expected)
+
+ res <- pivot_for_scan(spacetime_data_lg, id_time)
+ expected <- matrix(1:4, nrow = 4, ncol = 9, byrow = FALSE)
+ expect_equal(unname(res), expected)
 })
-
-test_that("Extra columns are silently removed", {
-  space_coord <- data.frame(space = c("s1", "s2", "s3", "s4"),
-                            stringsAsFactors = FALSE)
-  expect_equal(pivot_for_scan(df, "vals", space_coord, "time"),
-               expected)
-
-  space_coord <- data.frame(space = c("s4", "s2", "s3", "s1"),
-                            stringsAsFactors = FALSE)
-  expect_equal(pivot_for_scan(df, "vals", space_coord, "time"),
-               expected[, c(2, 3, 1)])
-
-})
-

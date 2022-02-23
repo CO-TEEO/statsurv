@@ -2,128 +2,96 @@
 
 set.seed(615180269)
 
-rowMedians <- function(data) {
-  apply(data, 1, median)
-}
+check_extract <- function(fit, yhat, f) {
+  expect_true(".fitted" %in% colnames(yhat))
+  expect_true(is.data.frame(yhat))
+  # We need some way to check that our fitted values are actually reasonable.
+  # We compare the means and also the range of values
+  y <- yhat %>%
+    dplyr::select(!!f[[2]]) %>%
+    .[[1]]
+  m1 <- mean(y)
+  m2 <- mean(yhat$.fitted)
+  d <- (m1-m2)/m2
+  if (!"-" %in% as.character(f[[3]]))  {
+    # Often get large disagreements if no intercept, which I don't understand but OK.
 
-expect_similar <- function(object, object2, pcnt_err = 0.05, abs_err = 0.2) {
-  act <- quasi_label(rlang::enquo(object), arg = "object")
-  act2 <- quasi_label(rlang::enquo(object2), arg = "object2")
-  object <- unname(object)
-  object2 <- unname(object2)
-  wi_pcnt <- abs((object - object2) / object) <= pcnt_err
-  wi_abs <- abs(object - object2) <= abs_err
-  if (all(wi_pcnt | wi_abs)) {
-    succeed()
-    return(invisible(act$val))
+    if ("negbin" %in% class(fit) || grepl("qpois", as.character(f[[2]]))) {
+      # Also get larger disagreemetns for glm.nb
+      expect_true(abs(d) <= 0.04)
+    } else {
+      expect_true(abs(d) < 0.02)
+    }
   }
 
-  good_m <- wi_abs | wi_pcnt
-  bad_m <- !good_m
-  msg <- compare(object[bad_m], object2[bad_m])$message
-  fail(msg)
+  # Then check that the domains are correct
+  fitted <- yhat$.fitted
+  if (all(y <= 1) & all(y >= 0)) {
+    expect_true(all(fitted >= 0) & all(fitted <= 1))
+  }
+  if (all(y > 0)) {
+    expect_true(all(fitted > 0))
+  }
+}
+compare_extract_aug <- function(fit, newdata, f) {
+
+  yhat <- extract_yhat(fit, newdata)
+
+  if (endsWith(class(fit)[[1]], "merMod")) {
+    aug <- suppressWarnings(augment(fit, newdata = newdata, type.predict = "response"))
+    aug <- dplyr::select(aug, id_time:.fitted)
+  } else {
+    aug <- augment(fit, newdata = newdata, type.predict = "response")
+  }
+  expect_equal(yhat, aug)
+  check_extract(fit, yhat, f)
 }
 
-check_yhat_means <- function(space_coord, time_coord, fit, data, n_samples = 100, tol = 0.01) {
-  yhat <- extract_yhat(space_coord, time_coord, fit, data)
-  test_that("extract_yhat gives a data frame", {expect_true(is.data.frame(yhat))})
-  row_has_na <- apply(data, 1, function(x) {any(is.na(x))})
-  non_na_inds <- which(row_has_na == FALSE)
-  test_that("extract_yhat matches predict", {
-    expect_equal(yhat[[3]][non_na_inds], unname(predict(fit, type = "response")))
-  })
-  test_that("sample_yhat converges to extract_yhat", {
-    samples <- sample_yhat(space_coord, time_coord, fit, data, n_samples = n_samples)
-    expect_similar(rowMedians(samples[, 3:ncol(samples)]), yhat[[3]])
-  })
-}
-
-check_inla <- function(space_coord,
-                       time_coord,
-                       fit,
-                       data,
-                       expected,
-                       tol = 1e-4,
-                       invlink = arm::invlogit,
-                       n_samples = 100) {
-
-  test_that("Of class INLA", {
-    expect_true("inla" %in% class(fit))
-  })
-
-  yhat <- extract_yhat(space_coord, time_coord, fit, data)
-  test_that("extract_yhat gives a data frame", {expect_true(is.data.frame(yhat))})
-  row_has_na <- apply(data, 1, function(x) {any(is.na(x))})
-  non_na_inds <- which(row_has_na == FALSE)
-
-  test_that("extract_yhat.INLA matches expected", {
-    expect_equal(yhat[[3]],
-                 expected,
-                 max_diffs = 14,
-                 tolerance = tol)
-  })
-  test_that("sample_yhat.INLA coverges to extract_yhat.INLA", {
-    samples <- suppressWarnings(sample_yhat(space_coord, time_coord, fit, data, n_samples))
-    expect_similar(rowMeans(samples[, 3:ncol(samples)]), yhat[[3]])
-  })
-}
-
-check_mermod <- function(space_coord, time_coord, fit, data, tol = 0.01) {
-  yhat <- extract_yhat(space_coord, time_coord, fit, data)
-  test_that("extract_yhat gives a data frame", {expect_true(is.data.frame(yhat))})
-  row_has_na <- apply(data, 1, function(x) {any(is.na(x))})
-  non_na_inds <- which(row_has_na == FALSE)
-  test_that("extract_yhat matches predict", {
-    expect_equal(yhat[[3]][non_na_inds], unname(predict(fit, type = "response")))
-  })
+invlogit <- function (x) {
+  1/(1 + exp(-x))
 }
 
 # Then create some basic data to test on:
-time_coord <- generate_date_range(lubridate::ymd("2010-01-01"),
-                                  lubridate::ymd("2019-12-21"),
-                                  time_division = "year")
-space_coord <- data.frame(space_reg = c("A", "B", "C", "D", "E", "F", "G", "H", "I", "J"),
-                          stringsAsFactors = FALSE) %>%
-  gridcoord::gc_gridcoord()
-comb_coords <- gridcoord::gc_expand(space_coord, time_coord)
-n <- nrow(comb_coords)
-na_inds <- 1:10
+start_date <- seq(lubridate::ymd("2010-01-01"), lubridate::ymd("2019-12-21"), by = "month")
+
+spacetime_data <- expand.grid(id_time = seq_along(start_date),
+                              id_space = 1:10) %>%
+  dplyr::mutate(start_date = start_date[id_time]) %>%
+  tibble::as_tibble()
+
+n <- nrow(spacetime_data)
+na_inds <- which(spacetime_data$id_time == max(spacetime_data$id_time))
 good_inds <- seq_len(n)[-na_inds]
-
-
-ey_time <- time_coord
-ey_space <- space_coord
 
 x_continuous <- runif(n, min = -5, max = 10) #continuous predictor
 x_discrete <- sample(c("L1", "L2", "L3", "L4", "L5"), n, replace = TRUE) #discrete predictor
-x_exp <- exp(runif(n, min = 0, max = 5.7))
+x_exp <- exp(runif(n, min = 0, max = 3.7))
 x_binary <- rbinom(n, 1, 0.5)
-# x_pos = runif(n, min = 5)
 
 exposure <- runif(n, min = 5, max = 200)
 offset <- log(exposure)
 factor_coeffs <- c(-2, 3, 1, 2, -1) %>%
   magrittr::set_names(sort(unique(x_discrete)))
 
-space_coeffs <- space_coord %>%
-  dplyr::rowwise() %>%
-  dplyr::mutate(space_coeffs = rnorm(sd = 6,n = 1)) %>%
-    .$space_coeffs %>%
-  magrittr::set_names(gridcoord::gc_get_labels(space_coord))
+space_coeffs <- rnorm(sd = 6, n = length(unique(spacetime_data$id_space)))
 
-ey_data <- cbind(comb_coords, x_continuous, x_discrete, x_exp, x_binary, exposure, offset) %>%
+ey_newdata <- cbind(spacetime_data, x_continuous, x_discrete, x_exp, x_binary, exposure, offset) %>%
   dplyr::mutate(y_lm = 3 + 2.5 * x_continuous + rnorm(n, sd = 2),
                 y_lm_f = 3 + 2.5 * x_continuous + factor_coeffs[x_discrete] + rnorm(n, sd= 2),
-                y_logit = rbinom(n, 1, arm::invlogit(x_exp * 0.05 + 1)),
-                y_logit_f = rbinom(n, 1, arm::invlogit(x_exp * 0.02 - factor_coeffs[x_discrete] / 2)), #Testing changing 0.05 to 0.02
+                y_logit = rbinom(n, 1, invlogit(x_exp * 0.05 + 1)),
+                y_logit_f = rbinom(n, 1, invlogit(x_exp * 0.02 - factor_coeffs[x_discrete] / 2)),
                 y_pois = rpois(n, exp(2.8 + 0.012 * x_continuous) - 0.20 * x_binary),
                 y_pois_off = rpois(n, exp(-3 + 0.012 * x_continuous - 0.20 * x_binary + offset)),
                 y_qpois_off = rnbinom(n,
                                       mu = exp(-3 + 0.012 * x_continuous - 0.20 * x_binary + offset),
                                       size = 0.5),
-                y_varint = 3 + 2.5 * x_continuous + space_coeffs[.data$space_reg] + rnorm(n, sd = 3)) %>%
+                y_varint = 3 + 2.5 * x_continuous + space_coeffs[.data$id_space] + rnorm(n, sd = 3))
+
+ey_data <- ey_newdata %>%
   dplyr::mutate_at(dplyr::vars(dplyr::starts_with("y_")),
                    function(x) {x[na_inds] <- NA; return(x)})
+
+
 
 
 formulas <- list(
@@ -143,5 +111,38 @@ formulas <- list(
   f_qpois_off_wi = y_qpois_off ~ x_continuous + x_binary + offset(offset)
   )
 
+ey_newdata_mermod <- cbind(spacetime_data, x_continuous, x_discrete, x_exp, x_binary, exposure, offset) %>%
+  dplyr::mutate(y_lm = 3 + 2.5 * x_continuous + space_coeffs[.data$id_space] + rnorm(n, sd = 2),
+                y_lm_f = 3 + 2.5 * x_continuous + factor_coeffs[x_discrete] +
+                  space_coeffs[.data$id_space] +rnorm(n, sd= 2),
+                y_logit = rbinom(n, 1, invlogit(x_exp * 0.05 +
+                                                       space_coeffs[.data$id_space] + 1)),
+                y_logit_f = rbinom(n, 1, invlogit(x_exp * 0.02 -
+                                                         factor_coeffs[x_discrete] / 2 +
+                                                         space_coeffs[.data$id_space])),
+                y_pois = rpois(n, exp(2.8 + 0.012 * x_continuous) - 0.20 * x_binary +
+                                 space_coeffs[.data$id_space]),
+                y_pois_off = rpois(n, exp(-3 + 0.012 * x_continuous - 0.20 * x_binary +
+                                            space_coeffs[.data$id_space]/3 + offset)),
+                y_qpois_off = rnbinom(n,
+                                      mu = exp(-3 + 0.012 * x_continuous - 0.20 * x_binary +
+                                                 space_coeffs[.data$id_space]/3 + offset),
+                                      size = 0.5))
 
 
+ey_data_mermod <- ey_newdata_mermod %>%
+  dplyr::mutate_at(dplyr::vars(dplyr::starts_with("y_")),
+                   function(x) {x[na_inds] <- NA; return(x)})
+
+
+adj_f <- function(f) {
+  f[[3]] <- rlang::expr(!!f[[3]] + (1 | id_space))
+  f
+}
+formulas_mermod <- purrr::map(formulas, adj_f)
+
+adj_f_inla <- function(f) {
+  f[[3]] <- rlang::expr(!!f[[3]] + f(id_space, model = "iid"))
+  f
+}
+formulas_inla <- purrr::map(formulas, adj_f_inla)
