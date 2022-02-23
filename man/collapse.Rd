@@ -31,16 +31,19 @@ conjunction with \code{\link[dplyr]{summarize}} to reduce the number of rows in 
 without losing information.
 }
 \examples{
+
 vec <- c(1, 2, 3, 3, 4)
 collapse(vec)
 
 collapse(vec, unique_only = TRUE)
 
 df1 <- data.frame(x = c(1, 2, 3), y = c("A", "B", "C"))
-df2 <- data.farme(x = c(4, 5), y= c("D", "E"))
+df2 <- data.frame(x = c(4, 5), y= c("D", "E"))
 collapse(list(df1, df2), combine_dfs = TRUE)
 
 # collapse can be used together with summarize:
+library("dplyr")
+library("tidyr")
 mtcars_nested <- mtcars \%>\%
   group_by(cyl) \%>\%
   nest()
@@ -54,6 +57,6 @@ model_fits <- tidyr::crossing(mtcars_nested, model_var = c("wt", "hp")) \%>\%
 # Combine the results from each model separately
 model_fits \%>\%
   group_by(model_var) \%>\%
-  summarize(models = collapse(model),
-            predictions = collapse(predictions, combine_dfs = TRUE))
+  summarize(models = statsurv::collapse(model),
+            predictions = statsurv::collapse(predictions, combine_dfs = TRUE))
 }

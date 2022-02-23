@@ -11,7 +11,7 @@
 #' @export
 #' @md
 #' @seealso \code{\link[scanstatistics]{scan_eb_poisson}}, \code{\link{scan_eb_negbin_fast}},
-#' \code{\link{pivot_for_scan}}, \code{\link{build_key_matrix}}
+#' \code{\link{pivot_for_scan}}, \code{\link{zones_to_key_matrix}}
 #' @examples
 #' # Apply scan_eb_poisson_fast to a 3x3 spatial grid with 4 time points
 #' # And inject an outbreak into the upper-left corner in the 2 most recent time points
@@ -22,7 +22,7 @@
 #' zones <- geo %>%
 #'   scanstatistics::coords_to_knn(k = 4) %>%
 #'   scanstatistics::knn_zones()
-#' key_matrix <- build_key_matrix(zones)
+#' key_matrix <- zones_to_key_matrix(zones)
 #' outbreak_sp <- c(1, 2, 4, 5)
 #' outbreak_tm <- c(3, 4)
 #' wide_cases <- matrix(2, nrow = 4, ncol = 9)
@@ -69,7 +69,7 @@ scan_eb_poisson_fast <- function(wide_cases, key_matrix, wide_baseline, n_mcsim)
 
     ### Argument Checks #########################################
     if (is.list(key_matrix)) {
-        key_matrix <- build_key_matrix(key_matrix)
+        key_matrix <- zones_to_key_matrix(key_matrix)
     }
 
     ### Computations ##################################

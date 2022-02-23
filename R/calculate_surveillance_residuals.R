@@ -64,6 +64,7 @@
 #' @examples
 #' library("scanstatistics")
 #' library("magrittr")
+#' library("broom")
 #' data(NM_popcas)
 #'
 #' # Generate a series of model predictions, each time including the data from another year:
@@ -75,7 +76,7 @@
 #'   window_idtime(min_train = 5, max_train = 5, n_predict = 1)
 #'
 #' model_res <- windowed_data %>%
-#'   rowmute(training_data = prepare_prediction_data(curr_data, count, split_id),
+#'   rowmute(training_data = prepare_training_data(curr_data, count, split_id),
 #'           model_fit = glm(count ~ year, family = poisson(),
 #'                           offset = log(population), data = training_data),
 #'           model_predictions = extract_yhat(model_fit, newdata = curr_data))
@@ -128,6 +129,8 @@ calculate_surveillance_residuals <- function(list_of_dataframes,
     stop("space_ids do not match between entires in `list_of_dataframes`. ",
          "Either run with `check_space_ids = FALSE` or run on a subset of the data frames")
   }
+  # Hack to avoid notes on R Cmd Check
+  id_time <- NULL; split_id <- NULL; working_data <- NULL; surveillance_data <- NULL
   # Actual code
 
   # Put the data into a data frame
@@ -135,15 +138,18 @@ calculate_surveillance_residuals <- function(list_of_dataframes,
                                split_id = split_ids,
                                working_data = list_of_dataframes) %>%
     dplyr::mutate(row_id = dplyr::row_number()) %>%
-    dplyr::arrange(window_time_id)
+    dplyr::arrange(.data$window_time_id)
+
   working_df <- working_df %>%
-    rowmute(surveillance_data = dplyr::filter(working_data, id_time >= split_id))
+    rowmute(surveillance_data = dplyr::filter(.data$working_data,
+                                              id_time >= split_id))
+
 
 
   filter_and_bind <- function(x, y) {
     # If we have overlapping predictions between steps, always take the most recent.
     time_inds <- unique(y$id_time)
-    x2 <- dplyr::filter(x, !id_time %in% .env$time_inds)
+    x2 <- dplyr::filter(x, !.data$id_time %in% .env$time_inds)
     rbind(x2, y)
   }
 
@@ -156,11 +162,11 @@ calculate_surveillance_residuals <- function(list_of_dataframes,
       .[[1]]
 
     working_df <- working_df %>%
-      dplyr::mutate(surveillance_data = purrr::accumulate(surveillance_data, filter_and_bind,
+      dplyr::mutate(surveillance_data = purrr::accumulate(.data$surveillance_data, filter_and_bind,
                                                           .init = init)[-1])
   } else {
     working_df <- working_df %>%
-      dplyr::mutate(surveillance_data = purrr::accumulate(surveillance_data, filter_and_bind))
+      dplyr::mutate(surveillance_data = purrr::accumulate(.data$surveillance_data, filter_and_bind))
 
   }
 
@@ -173,8 +179,8 @@ calculate_surveillance_residuals <- function(list_of_dataframes,
   }
 
   surveillance_datas <- working_df %>%
-    dplyr::arrange(row_id) %>%
-    dplyr::pull(surveillance_data)
+    dplyr::arrange(.data$row_id) %>%
+    dplyr::pull(.data$surveillance_data)
   return(surveillance_datas)
 }
 

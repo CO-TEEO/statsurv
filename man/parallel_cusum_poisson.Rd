@@ -61,5 +61,5 @@ scanres <- parallel_cusum_poisson(wide_cases, wide_baseline,
 }
 \seealso{
 \code{\link{scan_cusum_poisson}}, \code{\link{pivot_for_scan}},
-\code{\link{build_key_matrix}}, \code{\link{parallel_cusum_gaussian}}
+\code{\link{parallel_cusum_gaussian}}
 }

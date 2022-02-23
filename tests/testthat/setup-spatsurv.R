@@ -1,6 +1,0 @@
-inla_available <- requireNamespace("INLA", quietly = TRUE)
-mass_available <- requireNamespace("MASS", quietly = TRUE)
-forecast_available <- requireNamespace("forecast", quietly = TRUE)
-lme4_available <- requireNamespace("lme4", quietly = TRUE)
-scanstatistics_available <- requireNamespace("scanstatistics", quietly = TRUE)
-# suppressPackageStartupMessages(library("INLA"))

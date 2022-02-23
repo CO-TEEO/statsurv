@@ -4,7 +4,8 @@
 #' region, over all time points. Each spatial region is considered independently.
 #'
 #' @inheritParams spacetime_data
-#' @param outcome_col The column in `data` containing the outcome of interest, such as observed counts
+#' @param outcome_col The column in `spacetime_data` containing the outcome of interest, such as
+#'   observed counts
 #' @param baseline_col Optional. The column in `data` containing baseline estimates of the outcome
 #'   of interest. If not present, assumed to be 0 .
 #' @param mean The estimated mean of the residuals (`spacetime_data$outcome_col -
@@ -45,12 +46,14 @@ parallel_cusum_gaussian2 <- function(spacetime_data, outcome_col, baseline_col =
 
   validate_spacetime_data(spacetime_data)
   params <- dplyr::transmute(spacetime_data,
-                             id_space,
-                             id_time,
+                             id_space = .data$id_space,
+                             id_time = .data$id_time,
                              .mean = {{mean}},
-                             .sigma = {{sigma}})
-  wide_mean <- pivot_for_scan(params, .mean)
-  wide_sigma <- pivot_for_scan(params, .sigma)
+                             .sigma = {{sigma}},
+                             .drift = {{drift}})
+  wide_mean <- pivot_for_scan(params, .data$.mean)
+  wide_sigma <- pivot_for_scan(params, .data$.sigma)
+  wide_drift <- pivot_for_scan(params, .data$.drift)
 
 
   wide_baseline <- pivot_for_scan(spacetime_data,
@@ -61,9 +64,9 @@ parallel_cusum_gaussian2 <- function(spacetime_data, outcome_col, baseline_col =
 
   alarm_res <- parallel_cusum_gaussian(wide_cases,
                                        wide_baseline,
-                                       mean = mean,
-                                       sigma = sigma,
-                                       drift = drift)
+                                       mean = wide_mean,
+                                       sigma = wide_sigma,
+                                       drift = wide_drift)
 
   alarm_res_df <- unpivot_parallel_alarms(alarm_res)
   dplyr::left_join(spacetime_data, alarm_res_df, by = c("id_space", "id_time"))
@@ -102,10 +105,10 @@ parallel_cusum_poisson2 <- function(spacetime_data, outcome_col, baseline_col,
                                     scaling = 1.5) {
 
   params <- dplyr::transmute(spacetime_data,
-                             id_space,
-                             id_time,
+                             id_space = .data$id_space,
+                             id_time = .data$id_time,
                              .scaling = {{scaling}})
-  wide_scaling <- pivot_for_scan(params, .scaling)
+  wide_scaling <- pivot_for_scan(params, .data$.scaling)
 
 
   wide_baseline <- pivot_for_scan(spacetime_data,
@@ -154,12 +157,12 @@ parallel_shewhart_gaussian2 <- function(spacetime_data, outcome_col, baseline_co
                                         sigma = 1) {
   validate_spacetime_data(spacetime_data)
   params <- dplyr::transmute(spacetime_data,
-                             id_space,
-                             id_time,
+                             id_space = .data$id_space,
+                             id_time = .data$id_time,
                              .mean = {{mean}},
                              .sigma = {{sigma}})
-  wide_mean <- pivot_for_scan(params, .mean)
-  wide_sigma <- pivot_for_scan(params, .sigma)
+  wide_mean <- pivot_for_scan(params, .data$.mean)
+  wide_sigma <- pivot_for_scan(params, .data$.sigma)
 
 
   wide_baseline <- pivot_for_scan(spacetime_data,
@@ -170,8 +173,8 @@ parallel_shewhart_gaussian2 <- function(spacetime_data, outcome_col, baseline_co
 
   alarm_res <- parallel_shewhart_gaussian(wide_cases,
                                           wide_baseline,
-                                          mean = mean,
-                                          sigma = sigma)
+                                          mean = wide_mean,
+                                          sigma = wide_sigma)
 
   alarm_res_df <- unpivot_parallel_alarms(alarm_res)
   dplyr::left_join(spacetime_data, alarm_res_df, by = c("id_space", "id_time"))

@@ -9,7 +9,8 @@ window_idtime(
   min_train,
   max_train = Inf,
   n_predict = 1,
-  model_arity = c("multi", "uni")
+  step = 1,
+  split_spatial_locations = FALSE
 )
 }
 \arguments{
@@ -27,9 +28,12 @@ training data set, up to the maximum number identified by \code{max_train}.}
 \item{n_predict}{The number of time points (as identified by \code{id_time}) to have predictions
 generated for.}
 
-\item{model_arity}{Whether each spatial area (as identified by \code{id_space}) should be located in
-its own data window (if \code{model_arity = "uni"}) or if they should all be included in one window
-(if \code{model_arith = "multi"}).}
+\item{step}{How often should a window be generated? Default is 1, so a window is generated at
+every value of \code{id_time}.}
+
+\item{split_spatial_locations}{Whether each spatial area (as identified by \code{id_space}) should be
+located in its own data window (if \code{split_spatial_locations = TRUE}) or if they should all be
+included in one window (if \code{split_spatial_locations = "FALSE"}).}
 }
 \value{
 A tibble with one row per data window, containing the columns \code{id_time}, \code{id_space},
@@ -52,12 +56,13 @@ spacetime_data <- data.frame(id_space = rep(1:10, each = 10),
                              x = x,
                              y = 2.04 * x + 1.23)
 
-Create overlapping groups of data with at least 4 time points and up to 8 time points in the
-training set, and 2 time points in the prediction set.
+# Create overlapping groups of data with at least 4 time points
+# and up to 8 time points in the
+# training set, and 2 time points in the prediction set.
 window_idtime(spacetime_data, min_train = 4, max_train = 8,
-              n_predict = 2, model_arity = "multi")
+              n_predict = 2, split_spatial_locations = TRUE)
 
-The same, but put each spatial area in its own window
+# The same, but put each spatial area in its own window
 window_idtime(spacetime_data, min_train = 4, max_train = 8,
-              n_predict = 2, model_arity = "uni")
+              n_predict = 2, split_spatial_locations = TRUE)
 }

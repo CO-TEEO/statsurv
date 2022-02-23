@@ -49,5 +49,6 @@ predict(fit, only_newdata = presidents_df[111:120, ], n.ahead = 10)
 predict(fit, only_newdata = presidents_df[111:120, ])
 }
 \seealso{
-\code{\link[stats]{arima}}, \code{\link[stats]{predict.Arima}}, \code{\link{augment.arima_tidy}}
+\code{\link[stats]{arima}}, \code{\link[stats]{predict.Arima}},
+\code{\link{augment.arima_tidy}}
 }

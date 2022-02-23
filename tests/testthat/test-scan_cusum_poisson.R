@@ -1,5 +1,8 @@
-source("build_data_for_alarm_functions.R")
+library(scanstatistics)
+library(here)
+# source(here("tests", "testthat", "setup-alarm_function_data.R"))
 # Gets us the basic data we need for running a scanstatistics - counts, zones, baselines
+
 score_cusum <- function(y, lambda, scaling) {
   # Applied to a purely temporal process
   drift <- lambda * (scaling - 1) / log(scaling)
@@ -21,9 +24,14 @@ test_that("scan_cusum_poisson gives the scores we expect", {
                                 scaling = 1.5,
                                  n_mcsim = 1)
   calc_scores <- scanres$observed %>%
-    pivot_for_scan(value_col = "score", row_coord = "duration", column_coord = "zone")
+    dplyr::select(zone, duration, score) %>%
+    dplyr::arrange(zone, duration) %>%
+    tidyr::pivot_wider(names_from = zone, values_from = score) %>%
+    dplyr::select(-duration) %>%
+    as.matrix()
+
   expected_scores <- mapply(score_cusum, wide_cases_sm[2, ], wide_baseline_sm[2, ], 1.5)
-  expect_equal(flatten(calc_scores[1, ]),
+  expect_equal(unname(unlist(calc_scores[1, ])),
                as.vector(expected_scores))
 })
 

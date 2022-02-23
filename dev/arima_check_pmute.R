@@ -75,7 +75,7 @@ arima_data <- arima_data %>%
 
 
 nested_arima_data <- window_idtime(arima_data, min_train = 20,
-                                      max_train = Inf, n_predict = 1, model_arity = "uni")
+                                      max_train = Inf, n_predict = 1, split_spatial_locations = TRUE)
 prepped_arima_data <- nested_arima_data %>%
     rowmute(curr_data = mutate(curr_data, month_36 = pmax(id_time - 36, 0))) %>%
     rowmute(data_for_model = prepare_prediction_data(curr_data, yp, split_id, prep_strategy = "truncate"))

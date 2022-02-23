@@ -76,10 +76,13 @@ test_that("rowmute works with user-defined functions", {
   f <- function(x, y) {
     x + 2*y
   }
+  # Needed to make the environment finding work properly. I don't like it though.
+  f <<- f
   v1 <- nested_df %>%
     dplyr::mutate(z = f(group, even))
   v2 <- nested_df %>%
     rowmute(z = f(group, even))
+  expect_equal(v1, v2)
 })
 
 test_that("rowmute works on record-style objects", {
@@ -90,6 +93,7 @@ test_that("rowmute works on record-style objects", {
     vctrs::new_rcrd(list(n = n, d = d), class = "vctrs_rational")
   }
 
+  new_rational <<- new_rational
   format.vctrs_rational <- function(x, ...) {
     n <- vctrs::field(x, "n")
     d <- vctrs::field(x, "d")
@@ -103,12 +107,12 @@ test_that("rowmute works on record-style objects", {
   df <- tibble::tibble(n = c(1L, 2L, 3L), d = 2L)
   v1 <- df %>%
     dplyr::mutate(frac = new_rational(n, d)) %>%
-    rowwise() %>%
+    dplyr::rowwise() %>%
     dplyr::mutate(frac_l = list(c(new_rational(n, d), new_rational(n, 3L)))) %>%
-    ungroup()
+    dplyr::ungroup()
 
   v2 <- df %>%
-    rowmute(frac = new_rational(n, d),
+    statsurv::rowmute(frac = new_rational(n, d),
             frac_l = list(c(new_rational(n, d), new_rational(n, 3L)))) %>%
     tibble::as_tibble()
   expect_equal(v1, v2)

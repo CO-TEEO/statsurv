@@ -12,9 +12,11 @@
 #'   training data set, up to the maximum number identified by `max_train`.
 #' @param n_predict The number of time points (as identified by `id_time`) to have predictions
 #'   generated for.
-#' @param model_arity Whether each spatial area (as identified by `id_space`) should be located in
-#'   its own data window (if `model_arity = "uni"`) or if they should all be included in one window
-#'   (if `model_arith = "multi"`).
+#' @param step How often should a window be generated? Default is 1, so a window is generated at
+#'   every value of `id_time`.
+#' @param split_spatial_locations Whether each spatial area (as identified by `id_space`) should be
+#'   located in its own data window (if `split_spatial_locations = TRUE`) or if they should all be
+#'   included in one window (if `split_spatial_locations = "FALSE"`).
 #'
 #' @return A tibble with one row per data window, containing the columns `id_time`, `id_space`,
 #'   `split_id`, and `curr_data`. `id_time` and `id_space` identify the time point defining the end
@@ -33,26 +35,28 @@
 #'                              x = x,
 #'                              y = 2.04 * x + 1.23)
 #'
-#' Create overlapping groups of data with at least 4 time points and up to 8 time points in the
-#' training set, and 2 time points in the prediction set.
+#' # Create overlapping groups of data with at least 4 time points
+#' # and up to 8 time points in the
+#' # training set, and 2 time points in the prediction set.
 #' window_idtime(spacetime_data, min_train = 4, max_train = 8,
-#'               n_predict = 2, model_arity = "multi")
+#'               n_predict = 2, split_spatial_locations = TRUE)
 #'
-#' The same, but put each spatial area in its own window
+#' # The same, but put each spatial area in its own window
 #' window_idtime(spacetime_data, min_train = 4, max_train = 8,
-#'               n_predict = 2, model_arity = "uni")
+#'               n_predict = 2, split_spatial_locations = TRUE)
 window_idtime <- function(spacetime_data, min_train,
                           max_train = Inf, n_predict = 1,
-                          model_arity = c("multi", "uni")) {
-
-  #TOOD(): Add a "step" argument, so we can run every n steps
+                          step = 1,
+                          split_spatial_locations = FALSE) {
 
   # Arg checks
   spacetime_data <- validate_spacetime_data(spacetime_data)
-  model_arity <- match.arg(model_arity)
   stopifnot(rlang::is_scalar_integerish(min_train),
             rlang::is_scalar_integerish(max_train),
-            rlang::is_scalar_integerish(n_predict))
+            rlang::is_scalar_integerish(n_predict),
+            rlang::is_scalar_integerish(step),
+            step >= 1,
+            rlang::is_scalar_logical(split_spatial_locations))
 
   n_times <- length(unique(spacetime_data$id_time))
   stopifnot((min_train + n_predict) <= n_times)
@@ -66,9 +70,9 @@ window_idtime <- function(spacetime_data, min_train,
   spacetime_data <- dplyr::ungroup(spacetime_data)
 
   ### Deal with arity  ----
-  if (model_arity == "uni") {
-    spacetime_data = spacetime_data %>%
-      dplyr::group_by(id_space)
+  if (split_spatial_locations) {
+    spacetime_data <- spacetime_data %>%
+      dplyr::group_by(.data$id_space)
   }
 
 
@@ -85,28 +89,42 @@ window_idtime <- function(spacetime_data, min_train,
   }
   spacetime_data <-
     spacetime_data %>%
-    dplyr::arrange(id_time) %>%
-    dplyr::mutate(curr_data = slider::slide_index(dplyr::cur_data_all(), id_time,
+    dplyr::arrange(.data$id_time) %>%
+    dplyr::mutate(curr_data = slider::slide_index(dplyr::cur_data_all(), .data$id_time,
                                                   function(df) df,
                                                   .before = before_func,
                                                   .after = 0,
                                                   .complete = TRUE),
-                  split_id = id_time - n_predict + 1) %>%
-    dplyr::select(id_space, id_time, split_id, curr_data)
+                  split_id = .data$id_time - n_predict + 1) %>%
+    dplyr::select(.data$id_space, .data$id_time, .data$split_id, .data$curr_data)
 
 
   spacetime_data <- spacetime_data %>%
     dplyr::rowwise() %>%
-    dplyr::filter(!is.null(curr_data)) %>%
+    dplyr::filter(!is.null(.data$curr_data)) %>%
     dplyr::ungroup()
-  if (model_arity == "multi") {
+  if (!split_spatial_locations) {
     spacetime_data <- spacetime_data %>%
-      dplyr::group_by(id_time) %>%
-      dplyr::summarize(id_space = list(id_space),
-                       curr_data = list(curr_data[[1]]),
-                       split_id = split_id[[1]])
+      dplyr::group_by(.data$id_time) %>%
+      dplyr::summarize(id_space = list(.data$id_space),
+                       curr_data = list(.data$curr_data[[1]]),
+                       split_id = .data$split_id[[1]])
   }
-  spacetime_data %>%
-    dplyr::select(window_time_id = id_time, window_space_id = id_space, split_id, curr_data)
+
+  # Clean up the names
+  spacetime_data <- spacetime_data %>%
+    dplyr::select(window_time_id = .data$id_time,
+                  window_space_id = .data$id_space,
+                  split_id = .data$split_id,
+                  curr_data = .data$curr_data)
+
+  if (step != 1) {
+    wanted_time_ids <- seq(min(spacetime_data$window_time_id), max(spacetime_data$window_time_id),
+                           by = step)
+    spacetime_data <- spacetime_data %>%
+      dplyr::filter(.data$window_time_id %in% wanted_time_ids)
+  }
+
+  spacetime_data
 }
 

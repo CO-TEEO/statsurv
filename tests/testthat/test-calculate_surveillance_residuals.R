@@ -22,8 +22,9 @@ check_lengths <- function(surv_dfs, lengths) {
                lengths)
 }
 
-test_that("Works for n_predict = 1, model_arity = 'multi'", {
-  base_df <- window_idtime(spacetime_data, min_train = 5, max_train = 8, n_predict = 1, model_arity = "multi") %>%
+test_that("Works for n_predict = 1, split_spatial_locations = TRUE", {
+  base_df <- window_idtime(spacetime_data, min_train = 5, max_train = 8, n_predict = 1,
+                           split_spatial_locations = FALSE) %>%
     rowmute(aug_data = dplyr::mutate(curr_data, .fitted = rnorm(dplyr::n())))
 
   surv_df <- base_df %>%
@@ -93,8 +94,8 @@ test_that("Works for n_predict = 1, model_arity = 'multi'", {
   expect_equal(dplyr::arrange(mixed_surv_df, window_time_id), surv_df)
 })
 
-test_that("Works for n_predict = 1, model_arity = 'uni'", {
-  base_df <- window_idtime(spacetime_data, min_train = 5, max_train = 8, n_predict = 1, model_arity = "uni") %>%
+test_that("Works for n_predict = 1, split_spatial_locations = TRUE", {
+  base_df <- window_idtime(spacetime_data, min_train = 5, max_train = 8, n_predict = 1, split_spatial_locations = TRUE) %>%
     rowmute(aug_data = dplyr::mutate(curr_data, .fitted = rnorm(dplyr::n())))
 
   big_surv_df <- base_df %>%
@@ -156,10 +157,10 @@ test_that("Works for n_predict = 1, model_arity = 'uni'", {
 
 test_that("Gives an error if id_space doesn't line up", {
   split_df <- window_idtime(spacetime_data, min_train = 5, max_train = 8, n_predict = 1,
-                           model_arity = "uni") %>%
+                            split_spatial_locations = TRUE) %>%
     rowmute(aug_data = dplyr::mutate(curr_data, .fitted = rnorm(dplyr::n())))
   comb_df <- window_idtime(spacetime_data, min_train = 5, max_train = 8, n_predict = 1,
-                           model_arity = "multi") %>%
+                           split_spatial_locations = FALSE) %>%
     rowmute(aug_data = dplyr::mutate(curr_data, .fitted = rnorm(dplyr::n())))
   expect_error({big_surv_df <- split_df %>%
                  dplyr::group_by(window_space_id) %>%
@@ -190,8 +191,9 @@ test_that("Gives an error if id_space doesn't line up", {
     NA)
 })
 
-test_that("Works for n_predict = 3, model_arity = 'multi'", {
-  base_df <- window_idtime(spacetime_data, min_train = 5, max_train = 6, n_predict = 3, model_arity = "multi") %>%
+test_that("Works for n_predict = 3, split_spatial_locations = FALSE", {
+  base_df <- window_idtime(spacetime_data, min_train = 5, max_train = 6, n_predict = 3,
+                           split_spatial_locations = FALSE) %>%
     rowmute(aug_data = dplyr::mutate(curr_data, .fitted = rnorm(dplyr::n())))
 
   surv_df <- base_df %>%
@@ -234,8 +236,9 @@ test_that("Works for n_predict = 3, model_arity = 'multi'", {
   check_lengths(surv_df$surv_data, c(80, 90, 100))
 })
 
-test_that("Works for n_predict = 3, model_arity = 'uni'", {
-  base_df <- window_idtime(spacetime_data, min_train = 5, max_train = 6, n_predict = 3, model_arity = "uni") %>%
+test_that("Works for n_predict = 3, split_spatial_locations = TRUE", {
+  base_df <- window_idtime(spacetime_data, min_train = 5, max_train = 6, n_predict = 3,
+                           split_spatial_locations = TRUE) %>%
     rowmute(aug_data = dplyr::mutate(curr_data, .fitted = rnorm(dplyr::n())))
 
   big_surv_df <- base_df %>%

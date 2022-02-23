@@ -25,7 +25,7 @@
 #'   information from time points `1` thought `i`.
 #'
 #' @seealso \code{\link{scan_cusum_poisson}}, \code{\link{pivot_for_scan}},
-#'   \code{\link{build_key_matrix}}, \code{\link{parallel_cusum_gaussian}}
+#'   \code{\link{parallel_cusum_gaussian}}
 #' @export
 #' @md
 #' @examples

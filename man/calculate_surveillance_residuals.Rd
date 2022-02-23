@@ -84,6 +84,7 @@ value is reported.
 \examples{
 library("scanstatistics")
 library("magrittr")
+library("broom")
 data(NM_popcas)
 
 # Generate a series of model predictions, each time including the data from another year:
@@ -95,7 +96,7 @@ windowed_data <- spacetime_data \%>\%
   window_idtime(min_train = 5, max_train = 5, n_predict = 1)
 
 model_res <- windowed_data \%>\%
-  rowmute(training_data = prepare_prediction_data(curr_data, count, split_id),
+  rowmute(training_data = prepare_training_data(curr_data, count, split_id),
           model_fit = glm(count ~ year, family = poisson(),
                           offset = log(population), data = training_data),
           model_predictions = extract_yhat(model_fit, newdata = curr_data))

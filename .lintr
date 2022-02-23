@@ -1,0 +1,13 @@
+linters: with_defaults(line_length_linter(100),
+                       trailing_whitespace_linter = NULL,
+                       trailing_blank_lines_linter = NULL,
+                       todo_comment_linter(),
+                       cyclocomp_linter = NULL,
+                       semicolon_terminator_linter(),
+                       T_and_F_symbol_linter(),
+                       absolute_path_linter(),
+		       missing_argument_linter(),
+                       nonportable_path_linter(),
+                       namespace_linter(),
+                       todo_comment_linter()
+                       )

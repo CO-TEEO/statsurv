@@ -46,7 +46,7 @@
 #'   originally fit the model, and any new values of xreg to be used for prediction. IMPORTANT:
 #'   Unlike \code{\link[stats]{predict.Arima}}, `newxreg` must contain both the old and new values
 #'   of xreg.
-#' @param ...
+#' @inheritParams extract_yhat
 #'
 #' @return The input data frame `newdata` with the added column `.fitted` containing the predicted
 #'   values. Some models may also return additional columns, such as `.resid`. All columns added by
@@ -87,7 +87,7 @@ extract_yhat.Arima <- function(fit, newdata, resp_var, newxreg = NULL, ...) {
   if (missing(resp_var)) {
     stop("`resp_var` is missing")
   }
-  #I'm not 100% sure if this should be data masking or tidy-selecting? so either select or transmute.
+  #I'm not 100% sure if this should be data masking or tidy-selecting?
   # I think if we use transmute, we can match anything that's in the formula. So I should do that.
   yvar <- dplyr::transmute(newdata, {{resp_var}})[[1]]
   n_old <- length(fit$residuals)
@@ -95,7 +95,8 @@ extract_yhat.Arima <- function(fit, newdata, resp_var, newxreg = NULL, ...) {
   n_new <- nrow(newdata)
   n_ahead <- n_new - n_old
   if (n_ahead > 0) {
-    new_fitted <- predict(fit, n_ahead, newxreg = newxreg[n_old + seq_len(n_ahead), , drop = FALSE])
+    new_fitted <- stats::predict(fit, n_ahead,
+                                 newxreg = newxreg[n_old + seq_len(n_ahead), , drop = FALSE])
     comb_fitted <- c(as.numeric(old_fitted), as.numeric(new_fitted$pred))
   } else if (n_ahead == 0) {
     comb_fitted <- as.numeric(old_fitted)

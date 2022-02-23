@@ -1,7 +1,7 @@
 set.seed(373953261)
-library("scanstatistics")
-library("here")
-source(here("tests", "testthat", "build_data_for_alarm_functions.R"))
+library(scanstatistics)
+library(here)
+# source(here("tests", "testthat", "setup-alarm_function_data.R"))
 n_sim <- 0
 
 destandardize <- function(alarm_res) {
@@ -9,6 +9,7 @@ destandardize <- function(alarm_res) {
     if (alarm_res$type == "Bayesian") {
       alarm_res$observed <- NULL
       alarm_res$MLC$action_level <- NULL
+      alarm_res$posteriors$window_posteriors$action_level <- NULL
     } else {
       alarm_res$observed$action_level <- NULL
       alarm_res$replicates$action_level <- NULL
@@ -44,23 +45,18 @@ test_that("scan_eb_poisson matches", {
 
 test_that("scan_pb_poisson matches", {
   scanres <- scan_pb_poisson(wide_cases_lg, zones_lg, population = wide_pop_lg,
-                             n_mcsim = n_sim,
-                             gumbel = TRUE)
+                             n_mcsim = n_sim)
   scanres2 <- scan_pb_poisson2(spacetime_data_lg, cases, zones_lg, pop_col = pop,
-                               n_mcsim = n_sim,
-                               gumbel = TRUE)
+                               n_mcsim = n_sim)
   expect_equal(destandardize(scanres2), scanres)
 
   scanres <- scan_pb_poisson(wide_cases_lg, zones_lg,
-                             n_mcsim = n_sim,
-                             gumbel = TRUE)
+                             n_mcsim = n_sim)
   scanres2 <- scan_pb_poisson2(spacetime_data_lg, cases, zones_lg,
-                               n_mcsim = n_sim,
-                               gumbel = TRUE)
+                               n_mcsim = n_sim)
   expect_equal(destandardize(scanres2), scanres)
   scanres2 <- scan_pb_poisson2(spacetime_data_lg, cases, zones_lg, pop_col = NULL,
-                               n_mcsim = n_sim,
-                               gumbel = TRUE)
+                               n_mcsim = n_sim)
   expect_equal(destandardize(scanres2), scanres)
 })
 
@@ -83,13 +79,6 @@ test_that("scan_eb_negbin matches", {
 
 
   # scan_eb_negbin actually gives an error if baselines is not provided
-  # scanres <- scan_eb_negbin(wide_cases_lg, zones_lg, baselines = wide_baseline_lg,
-  #                           n_mcsim = n_sim,
-  #                           thetas = 1.5)
-  # scanres2 <- scan_eb_negbin2(spacetime_data_lg, cases, zones_lg,
-  #                             n_mcsim = n_sim,
-  #                             theta_col = 1.5)
-  # expect_equal(destandardize(scanres2), scanres)
 
   scanres <- scan_eb_negbin(wide_cases_lg, zones_lg, baseline = wide_baseline_lg,
                             n_mcsim = n_sim,
@@ -112,21 +101,29 @@ test_that("scan_eb_zip matches", {
   expect_equal(destandardize(scanres2), scanres)
 
   # No baseline, yes pop
-  scanres <- scan_eb_zip(wide_cases_lg, zones_lg, population = wide_pop_lg,
+  scanres <- suppressWarnings(
+    scan_eb_zip(wide_cases_lg, zones_lg, population = wide_pop_lg,
                          n_mcsim = n_sim,
                          probs = wide_probs_lg)
+  )
 
-  scanres2 <- scan_eb_zip2(spacetime_data_lg, cases, zones_lg, pop_col = pop,
+  scanres2 <- suppressWarnings(
+    scan_eb_zip2(spacetime_data_lg, cases, zones_lg, pop_col = pop,
                            n_mcsim = n_sim,
                            prob_col = probs)
+  )
   expect_equal(destandardize(scanres2), scanres)
 
   # Probs no
-  scanres <- scan_eb_zip(wide_cases_lg, zones_lg, wide_baseline_lg,
+  scanres <- suppressWarnings(
+    scan_eb_zip(wide_cases_lg, zones_lg, baseline = wide_baseline_lg,
                          n_mcsim = n_sim)
+  )
 
-  scanres2 <- scan_eb_zip2(spacetime_data_lg, cases, zones_lg, baseline_col = .fitted,
+  scanres2 <- suppressWarnings(
+    scan_eb_zip2(spacetime_data_lg, cases, zones_lg, baseline_col = .fitted,
                            n_mcsim = n_sim)
+  )
   expect_equal(destandardize(scanres2), scanres)
 
   # Probs Scalar (not allowed for scan_eb_zip)
@@ -230,45 +227,4 @@ test_that("scan_cusum_poisson matches", {
   # And I don't think there are any options in the arguments.
 })
 
-test_that("parallel_cusum_poisson matches", {
-  scanres <- parallel_cusum_poisson(wide_cases_lg, wide_baseline_lg, scaling = 1.25)
-  scanres_gen <- standardized_alarm_functions("parallel_cusum_poisson",
-                                              wide_cases_lg,
-                                              NULL,
-                                              wide_baseline_lg,
-                                              n_mcsim = n_sim,
-                                              scaling = 1.25)
-  expect_equal(destandardize(scanres_gen), scanres)
-})
 
-
-test_that("parallel_cusum_gaussian matches", {
-  scanres <- parallel_cusum_gaussian(wide_cases_lg, wide_baseline_lg,
-                                     mean = 0,
-                                     sigma = c(1:9))
-  scanres_gen <- standardized_alarm_functions("parallel_cusum_gaussian",
-                                              wide_cases_lg,
-                                              NULL,
-                                              wide_baseline_lg,
-                                              n_mcsim = n_sim,
-                                              mean = 0,
-                                              sigma = 1:9)
-  expect_equal(destandardize(scanres_gen), scanres)
-
-})
-#
-# test_that("parallel_shewhart_gaussian matches", {
-#   scanres <- parallel_shewhart_gaussian(wide_cases_lg, wide_baseline_lg,
-#                                      mean = 0,
-#                                      sigma = c(1:9))
-#   scanres_gen <- standardized_alarm_functions("parallel_shewhart_gaussian",
-#                                               wide_cases_lg,
-#                                               NULL,
-#                                               wide_baseline_lg,
-#                                               n_mcsim = n_sim,
-#                                               mean = 0,
-#                                               sigma = 1:9)
-#   expect_equal(destandardize(scanres_gen), scanres)
-#
-# })
-#

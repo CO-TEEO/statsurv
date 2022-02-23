@@ -20,7 +20,7 @@ and up. Can be generated from a data.frame with the \code{\link{pivot_for_scan}}
 \item{key_matrix}{A matrix specifying how which locations belong to each zone. Each row is a
 different zone and each column is a location. An element \verb{(i,j)} is 1 if location \code{j} is part
 of zone \code{i} and is 0 otherwise. Can be generated from a list specifying zones using the
-\code{\link{build_key_matrix}} function.}
+\code{\link{zones_to_key_matrix}} function.}
 
 \item{wide_baseline}{A matrix of the same dimensions as \code{wide_cases}, holding the expected value
 of cases at each space-time location.This value is typically estimated from past data using a
@@ -89,7 +89,7 @@ geo <- matrix(c(x_coord, y_coord), ncol = 2, byrow = FALSE)
 zones <- geo \%>\%
   scanstatistics::coords_to_knn(k = 4) \%>\%
   scanstatistics::knn_zones()
-key_matrix <- build_key_matrix(zones)
+key_matrix <- zones_to_key_matrix(zones)
 outbreak_sp <- c(1, 2, 4, 5)
 outbreak_tm <- c(3, 4)
 wide_cases <- matrix(2, nrow = 4, ncol = 9)
@@ -106,5 +106,5 @@ scan statistics}, Stat Med 26(26): 4770-4789.
 }
 \seealso{
 \code{\link{parallel_cusum_poisson}}, \code{\link{pivot_for_scan}},
-\code{\link{build_key_matrix}}
+\code{\link{zones_to_key_matrix}}
 }

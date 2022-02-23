@@ -12,3 +12,5 @@
 ^LICENSE\.md$
 ^lib$
 ^coverage_report\.html$
+^dev$
+^improvements_punch_list\.txt$

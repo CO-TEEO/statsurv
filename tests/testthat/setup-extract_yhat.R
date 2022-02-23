@@ -47,6 +47,9 @@ compare_extract_aug <- function(fit, newdata, f) {
   check_extract(fit, yhat, f)
 }
 
+invlogit <- function (x) {
+  1/(1 + exp(-x))
+}
 
 # Then create some basic data to test on:
 start_date <- seq(lubridate::ymd("2010-01-01"), lubridate::ymd("2019-12-21"), by = "month")
@@ -75,8 +78,8 @@ space_coeffs <- rnorm(sd = 6, n = length(unique(spacetime_data$id_space)))
 ey_newdata <- cbind(spacetime_data, x_continuous, x_discrete, x_exp, x_binary, exposure, offset) %>%
   dplyr::mutate(y_lm = 3 + 2.5 * x_continuous + rnorm(n, sd = 2),
                 y_lm_f = 3 + 2.5 * x_continuous + factor_coeffs[x_discrete] + rnorm(n, sd= 2),
-                y_logit = rbinom(n, 1, arm::invlogit(x_exp * 0.05 + 1)),
-                y_logit_f = rbinom(n, 1, arm::invlogit(x_exp * 0.02 - factor_coeffs[x_discrete] / 2)),
+                y_logit = rbinom(n, 1, invlogit(x_exp * 0.05 + 1)),
+                y_logit_f = rbinom(n, 1, invlogit(x_exp * 0.02 - factor_coeffs[x_discrete] / 2)),
                 y_pois = rpois(n, exp(2.8 + 0.012 * x_continuous) - 0.20 * x_binary),
                 y_pois_off = rpois(n, exp(-3 + 0.012 * x_continuous - 0.20 * x_binary + offset)),
                 y_qpois_off = rnbinom(n,
@@ -112,9 +115,9 @@ ey_newdata_mermod <- cbind(spacetime_data, x_continuous, x_discrete, x_exp, x_bi
   dplyr::mutate(y_lm = 3 + 2.5 * x_continuous + space_coeffs[.data$id_space] + rnorm(n, sd = 2),
                 y_lm_f = 3 + 2.5 * x_continuous + factor_coeffs[x_discrete] +
                   space_coeffs[.data$id_space] +rnorm(n, sd= 2),
-                y_logit = rbinom(n, 1, arm::invlogit(x_exp * 0.05 +
+                y_logit = rbinom(n, 1, invlogit(x_exp * 0.05 +
                                                        space_coeffs[.data$id_space] + 1)),
-                y_logit_f = rbinom(n, 1, arm::invlogit(x_exp * 0.02 -
+                y_logit_f = rbinom(n, 1, invlogit(x_exp * 0.02 -
                                                          factor_coeffs[x_discrete] / 2 +
                                                          space_coeffs[.data$id_space])),
                 y_pois = rpois(n, exp(2.8 + 0.012 * x_continuous) - 0.20 * x_binary +

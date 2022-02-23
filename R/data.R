@@ -1,151 +1,58 @@
-#' @title Geographical boundaries for counties in Colorado
-#'
-#' @description A SpatialPolygonsDataFrame containing the geographical boundaries for all counties
-#'   in Colorado, as of 2019.
-#'
-#' @format A SpatialPolygonsDataFrame with 64 rows and 1 variables:
-#' \describe{
-#'   \item{fips_str}{The 5-digit code used to identify the county. A full list of IDs is available
-#'   from the
-#'   \href{https://www.census.gov/geographies/reference-files/2018/demo/popest/2018-fips.html}{US
-#'   Census Bureau} ("08001" - "08125")}
-#'  }
-#'
-#' @note To save memory, county boundaries were simplified using the \code{\link[sf]{st_simplify}}
-#'    command and therfore do not exactly match the source shapefiles.
-#'
-#' @source \url{https://data-cdphe.opendata.arcgis.com/datasets/colorado-county-boundaries}
-"co_county_fips_2019"
-
 #' @title Geographical boundaries for counties in New Mexico
 #'
 #' @description A simple features collection containing the geographical boundaries for all counties
-#'   in New Mexico, as of 2010
-#'
-#' @format A Simple Features collection with 33 rows and 2 variables:
-#' \describe{
-#'   \item{fips_str}{The 5-digit code used to identify the county. A full list of IDs is available
-#'   from the
-#'   \href{https://www.census.gov/geographies/reference-files/2018/demo/popest/2018-fips.html}{US
-#'   Census Bureau} ("35001" - "35061")}
-#'   \item{county_name}{The name of the county, with the first letter capitalized
-#'   ("Bernalillo" - "Valencia")}
-#'  }
-#'
-#' @note To save memory, county boundaries were simplified using the \code{\link[sf]{st_simplify}}
-#'    command and therfore do not exactly match the source shapefiles.
-#'
-#' @source \url{http://rgis.unm.edu/rgis6/}
-"nm_county_fips_2010"
-
-
-#' @title Geographic boundaries for Colorado health statistics regions
-#'
-#' @description A SpatialPolygonsDataFrame containing the geographic boundaries for all health
-#'   statistics regions in Colorado, as of 2019. The health statistics regions are aggregations of
-#'   demographically similar counties and divide the state into 21 non-overlapping regions.
-#'
-#' @format A SpatialPolygonsDataFrame with 21 rows and 1 variables:
-#' \describe{
-#'   \item{hsr}{A string labeling the region, of the form "hsr_XX" ("hsr_01" - "hsr_21")}
-#' }
-#'
-#' @note To save memory, region boundaries were simplified using the \code{\link[sf]{st_simplify}}
-#'    command and therfore do not exactly match the source shapefiles.
-#'
-#' @source
-#'   \url{https://data-cdphe.opendata.arcgis.com/datasets/cdphe-colorado-health-statistics-regions}
-"co_hsr_2019"
-
-
-#' @title Geographic boundary of the state of Colorado
-#'
-#' @description A SpatialPolygonsDataFrame containing the geographic boundaries of the state of
-#'   Colorado.
-#'
-#' @format A SpatialPolygonsDataFrame with 1 row and 1 variables:
-#' \describe{
-#'   \item{name}{The name of the state ("colorado")}
-#' }
-#'
-#'
-#' @source \url{https://data-cdphe.opendata.arcgis.com/datasets/colorado-state-boundary}
-"co_state_boundary"
-
-#' @title Geographical boundaries for census tracts in the Denver Metro Area
-#'
-#' @description A SpatialPolygonsDataFrame containing the geographical boundaries for all census
-#'   tracts in the Denver Metro Area. The approximate geographic boundary for metro area was defined
-#'   as the beltway formed by highways CO-93, CO-470, E-470, the Northwest Parkway, US-36, and
-#'   CO-170. Any census tract with any portion inside this ring is included in this dataset.
-#'
-#' @format A SpatialPolygonsDataFrame with 534 rows and 1 variables:
-#' \describe{
-#'   \item{fips_str}{The 11-digit code used to identify the county ("08001" - "08125")}
-#'  }
-#'
-#'
-#' @source
-#'   \url{https://www.census.gov/geographies/mapping-files/time-series/geo/carto-boundary-file.html}
-"denver_censustract_fips_2019"
-
-
-#' @title Approximate boundary of the Denver metro area
-#'
-#' @description A SpatialPolygonsDataFrame describing the approximate geographic boundary for metro
-#'   area was defined as the beltway formed by highways CO-93, CO-470, E-470, the Northwest Parkway,
-#'   US-36, and CO-170.
-#'
-#' @format A SpatialPolygonsDataFrame with 1 rows and 1 variables:
-#' \describe{
-#'   \item{Name}{NA}
-#'  }
-#'
-"denver_metro_area"
-
-
-#' @title Spatial coordinate corresponding to the dataset NM_popcas
-#'
-#' @description A simple features collection containing the geographical boundaries for all counties
-#'   in New Mexico that are included in the dataset \code{\link[scanstatistics]{NM_popcas}}
+#'   in New Mexico, as of 2010. To avoid errors when looking at counties over time, Cibola county is
+#'   not included.
 #'
 #' @format A Simple Features collection with 32 rows and 2 variables:
 #' \describe{
-#'   \item{county}{The name of the county in all lower case and spaces removed
+#'   \item{id_space}{An integer label associated with each county (1-32)}
+#'   \item{county}{The name of the county, in all lower case
 #'   ("bernalillo" - "valencia")}
 #'  }
 #'
 #' @note To save memory, county boundaries were simplified using the \code{\link[sf]{st_simplify}}
-#'    command and therfore do not exactly match the source shapefiles.
+#'    command and therefore do not exactly match the source shapefiles.
 #'
 #' @source \url{http://rgis.unm.edu/rgis6/}
-"nm_county_coord"
-
-#' @title Scanstatistics results for brain cancer in New Mexico, 1980 - 1991
-#'
-#' @description A list containing the results of repeated applying the Poisson scan statistic to
-#'   cases of brain cancer in New Mexico at the county level. Baseline estimates were generated
-#'   using a Poisson model, where the number of cases is a function of year and the population of
-#'   the county was used at the offset. The maximum zone size is 3 counties.
-#'
-#' @format A list where each entry is either `NA` or the output of
-#'   \code{\link[scanstatistics]{scan_eb_poisson}}, applied to cases of brain cancer in New Mexico
-#'   at the county level.
-#'
-#' @md
-"nm_scan_alarms"
+"NM_county_sf"
 
 
-#' @title CUSUM results for brain cancer in New Mexico, 1980 - 1991
+#' @title Population and brain cancer cases in New Mexico, 1973 - 1991
 #'
-#' @description A list containing the results of repeated applying the CUSUM alarm statistic to
-#'   cases of brain cancer in New Mexico at the county level. Baseline estimates were generated
-#'   using a Poisson model, where the number of cases is a function of year and the population of
-#'   the county was used at the offset.
+#' @description A data set containing the population count an dnumber of brain cancer cases in each
+#'   county in New Mexico for the years 1973 - 1991. The data has been formatted to be a valid
+#'   \code{\link[=spacetime_data]{spacetime data frame}}
 #'
-#' @format A list where each entry is either `NA` or the output of
-#'   \code{\link{parallel_cusum_poisson}}, applied to cases of brain cancer in New Mexico
-#'   at the county level.
+#' @format A data frame with 608 rows and 7 columns:
+#' \describe{
+#'   \item{id_time}{An integer label associated with each year (1-19)}
+#'   \item{id_space}{An integer label associated with each county (1-32)}
+#'   \item{year}{The year the cases were recorded (1973-1991)}
+#'   \item{county}{The name of the county, in all lower cases, with no spaces ("bernalillo" -
+#'   "valencia")}
+#'   \item{population}{The popoulation of the county in that year. Interpolated from censuses in
+#'   1973, 1982, and 1991 (977-490248)}
+#'   \item{count}{The number of brain cancer cases reported in that county and year (0-34)}
+#'   \item{baseline_est}{A simple baseline estimate of the expected number of cases based on the
+#'   population (0.044-22.5)}
+#'  }
 #'
-#' @md
-"nm_cusum_alarms"
+#' @source \url{https://github.com/BenjaK/scanstatistics}
+"NM_data"
+
+#' @title Quarterly Approval Ratings of US Presidents
+#'
+#' @description A data frame containing the approximately quarterly approval rating for the
+#'   President of the United States, from 1945 - 1974. Converted to a data frame from the
+#'   \code{\link[datasets]{presidents}} time series.
+#'
+#' @format A data frame with 120 rows and 3 columns:
+#' \describe{
+#'   \item{approval_rating}{The quarterly approval rating of the US President, as a percent (23-87)}
+#'   \item{date}{The year, as a decimal (1945.25 - 1975.00)}
+#'   \item{election_year}{1 if the current year was presidential election year, 0 otherwise (0/1)}
+#'}
+#'
+#' @source \code{\link[datasets]{presidents}}
+"presidents_df"

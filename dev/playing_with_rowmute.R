@@ -35,7 +35,7 @@ windowed_data <- window_idtime(spacetime_data,
                                   min_train = 5,
                                   max_train = 7,
                                   n_predict = 1,
-                                  model_arity = "multi")
+                               split_spatial_locations = TRUE)
 
 
 df_after_loop_model <- windowed_data %>%
@@ -115,7 +115,7 @@ data_for_scan$.sample2 <- 6
 is_outbreak <- data_for_scan$zcta_str %in% c("80401", "80203") & data_for_scan$time >= 9
 data_for_scan$observed <- floor(data_for_scan$baseline + ifelse(is_outbreak, 4, 0))
 
-windowed_for_scan <- window_idtime(data_for_scan, 7, Inf, 1, "multi")
+windowed_for_scan <- window_idtime(data_for_scan, 7, Inf, 1, split_spatial_locations = TRUE)
 # windowed_for_scan$augmented_data <- windowed_for_scan$curr_data
 
 zones <- space_coord_to_zones(space_coord, max_k = 2) # Put in the minimum size of the zone here

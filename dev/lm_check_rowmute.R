@@ -20,7 +20,7 @@ simple_lm_func <- function(data_for_model) {
 
 handlers(global = TRUE)
 windowed_data <- window_idtime(spacetime_data, min_train = 7, max_train = 10,
-                               n_predict = 1, model_arity = "uni")
+                               n_predict = 1, split_spatial_locations = TRUE)
 prepped_data <- windowed_data %>%
   rowmute(input_data = prepare_prediction_data(curr_data, y, split_id = split_id, prep_strategy = "NA"))
 

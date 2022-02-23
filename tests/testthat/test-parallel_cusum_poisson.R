@@ -1,6 +1,3 @@
-source("build_data_for_alarm_functions.R")
-# Gets us the basic data we need for running a scanstatistics - counts, zones, baselines
-
 score_cusum <- function(y, lambda, scaling) {
   # Applied to a purely temporal process
   drift <- lambda * (scaling - 1) / log(scaling)

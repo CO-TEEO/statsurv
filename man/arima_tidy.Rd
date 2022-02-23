@@ -15,16 +15,16 @@ arima_tidy(
   init = NULL,
   method = c("CSS-ML", "ML", "CSS"),
   n.cond,
-  SSint = c("Gardner1980", "Rossignol2011"),
+  SSinit = c("Gardner1980", "Rossignol2011"),
   optim.method = "BFGS",
   optim.control = list(),
   kappa = 1e+06
 )
 }
 \arguments{
-\item{f}{A \code{\link{stats::formula}} describing the response variable and any external
+\item{f}{A \code{\link[stats]{formula}} describing the response variable and any external
 regressors to be used in the arima model. All variables included in \code{f} must be contained in
-\code{data}. The response variable is passed to \code{\link[arima]{stats}} as \code{x} and all external
+\code{data}. The response variable is passed to \code{\link[stats]{arima}} as \code{x} and all external
 regressors are passed as \code{xreg}.}
 
 \item{data}{A data frame or data frame extension (e.g., a tibble) containing all of the variables
@@ -87,6 +87,10 @@ must be specified by a list with components order and period.}
     number of initial observations to ignore.  It will be ignored if
     less than the maximum lag of an AR term.}
 
+\item{SSinit}{a string specifying the algorithm to compute the
+    state-space initialization of the likelihood; see
+    \code{\link[stats]{KalmanLike}} for details.   Can be abbreviated.}
+
 \item{optim.method}{The value passed as the \code{method} argument to
     \code{\link[stats]{optim}}.}
 
@@ -110,10 +114,10 @@ contains the residuals, but not the fitted values.}
 }
 }
 \description{
-\code{arima_tidy} is a wrapper around \code{\link[arima]{stats}} that allows you to specify the
-response variable and any external regressors for an ARIMA model using a data.frame and formula,
-instead of having to manually generate \code{xreg}. This makes the workflow for fitting ARIMA models
-much closer to the workflow for fitting \code{lm} or \code{glm} models.
+\code{arima_tidy} is a wrapper around \code{\link[stats]{arima}} that allows you to
+specify the response variable and any external regressors for an ARIMA model using a data.frame
+and formula, instead of having to manually generate \code{xreg}. This makes the workflow for fitting
+ARIMA models much closer to the workflow for fitting \code{lm} or \code{glm} models.
 }
 \examples{
 data("LakeHuron")
@@ -126,25 +130,26 @@ LakeHuron_df$election_year = LakeHuron_df$date \%\% 4 == 0
 # Basically anything that works in a formula can be used in arima_tidy
 arima_tidy(lake_level ~ I(date - 1920), data = LakeHuron_df, order = c(2, 0, 0))
 
-arima_tidy(sqrt(y) ~ date + is_election_year, data = LakeHuron_df, order = c(2, 0, 0))
+arima_tidy(sqrt(lake_level) ~ date + election_year, data = LakeHuron_df, order = c(2, 0, 0))
 
 # We can reference variables outside of the `data` argument
 
 shift <- 2000
-arima_tidy(sqrt(y) ~ log(date + shift),  data = LakeHuron_df, order = c(2, 0, 0))
+arima_tidy(sqrt(lake_level) ~ log(date + shift),  data = LakeHuron_df, order = c(2, 0, 0))
 
 # We can handle data with NA's and seasonal data:
 data("presidents_df")
 
-arima_tidy(y ~ 1, data = presidents_df, order = c(1, 0, 0))
+arima_tidy(approval_rating ~ 1, data = presidents_df, order = c(1, 0, 0))
 
 # We lose the frequency information when the data is
 # stored in a data.frame, so we have to specify
 # the period manually for seasonal approaches:
-arima_tidy(y ~ 1, data = presidents_df, order=c(2,0,1),
+arima_tidy(approval_rating ~ 1, data = presidents_df, order=c(2,0,1),
            seasonal= list(order = c(1,0,0), period = 4),
            fixed=c(NA, NA, 0.5, -0.1, 50), transform.pars=FALSE)
 }
 \seealso{
-\code{\link[stats]{arima}}, \code{\link{predict.arima_tidy}}, \code{\link{augment.arima_tidy}}
+\code{\link[stats]{arima}}, \code{\link{predict.arima_tidy}},
+\code{\link{augment.arima_tidy}}
 }

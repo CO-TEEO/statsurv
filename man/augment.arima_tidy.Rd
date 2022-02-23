@@ -4,9 +4,11 @@
 \alias{augment.arima_tidy}
 \title{Augment data with information from an arima_tidy object}
 \usage{
-\method{augment}{arima_tidy}(fit, newdata, ...)
+\method{augment}{arima_tidy}(x, newdata, ...)
 }
 \arguments{
+\item{x}{The result of an \code{arima_tidy} fit.}
+
 \item{newdata}{The data used to originally fit the model as well as any additional data to be
 used to generate predictions. The rows are assumed to be ordered from earliest to latest. If
 the originally model was fit on \code{n} data points, the first \code{n} rows of \code{newdata} are assumed to

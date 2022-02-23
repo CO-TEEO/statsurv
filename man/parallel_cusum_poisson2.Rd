@@ -18,7 +18,8 @@ columns `id_space` and `id_time` that are each a set of consecutive integers. Th
 and higher numbers being later. The column `id_space` identifies the spatial location or area
 associated with each row, but no meaning or order is ascribed to the values.}
 
-\item{outcome_col}{The column in \code{data} containing the outcome of interest, such as observed counts}
+\item{outcome_col}{The column in \code{spacetime_data} containing the outcome of interest, such as
+observed counts}
 
 \item{baseline_col}{The column in \code{data} containing baseline estimates of the outcome
 of interest.}

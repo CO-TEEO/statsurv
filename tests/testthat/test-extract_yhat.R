@@ -1,3 +1,6 @@
+library(broom)
+library(broom.mixed)
+
 ### lm ----
 lm_formulas <- formulas[startsWith(names(formulas), "f_lm")]
 
@@ -52,7 +55,7 @@ for (ind in seq_len(nrow(glm_combos))) {
 
 ### glm.nb ----
 test_that("extract_yhat matches augment for glm.nb models", {
-  if (!mass_available) skip("MASS not available")
+  skip_if_not_installed("MASS")
 
   # Can't use offset in glm.nb models, so only have the one to check
   fit <- MASS::glm.nb(formulas$f_qpois_off_wi,
@@ -65,7 +68,7 @@ lmer_formulas <- formulas_mermod[startsWith(names(formulas_mermod), "f_lm")]
 
 for (frmla in lmer_formulas) {
   test_that("extract_yhat matches augment for lmer models", {
-    if (!lme4_available) skip("lme4 not available")
+    skip_if_not_installed("lme4")
     fit <- lme4::lmer(frmla,
                       data = ey_data_mermod)
 
@@ -79,7 +82,7 @@ glmer_combos <- glm_combos %>%
          !startsWith(link_name, "quasi"))
 for (ind in seq_len(nrow(glmer_combos))) {
   test_that("extract_yhat matches augment for glmer models", {
-    if (!lme4_available) skip("lme4 not available")
+    skip_if_not_installed("lme4")
     curr_row <- glmer_combos[ind, , drop = FALSE]
 
     if (curr_row$offset) {
@@ -158,7 +161,9 @@ for (ind in seq_len(nrow(inla_combos))) {
 }
 
 test_that("extract_yhat.INLA gives a useful error if control.predictor$compute = FALSE", {
-  if (!inla_available) skip("INLA not available")
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+
 
   bad_fit_inla <- INLA::inla(formulas$f_lm,
                              data = ey_data,

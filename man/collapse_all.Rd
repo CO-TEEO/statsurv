@@ -69,6 +69,9 @@ df %>%
 }
 }
 \examples{
+library(tidyr)
+library(dplyr)
+
 mtcars_nested <- mtcars \%>\%
   group_by(cyl) \%>\%
   nest()

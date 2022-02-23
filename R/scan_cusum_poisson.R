@@ -29,7 +29,7 @@
 #'   Sonesson, C. (2007). \emph{A CUSUM framework for detection of space-time disease clusters using
 #'   scan statistics}, Stat Med 26(26): 4770-4789.
 #' @seealso \code{\link{parallel_cusum_poisson}}, \code{\link{pivot_for_scan}},
-#'   \code{\link{build_key_matrix}}
+#'   \code{\link{zones_to_key_matrix}}
 #' @export
 #' @md
 #' @examples
@@ -42,7 +42,7 @@
 #' zones <- geo %>%
 #'   scanstatistics::coords_to_knn(k = 4) %>%
 #'   scanstatistics::knn_zones()
-#' key_matrix <- build_key_matrix(zones)
+#' key_matrix <- zones_to_key_matrix(zones)
 #' outbreak_sp <- c(1, 2, 4, 5)
 #' outbreak_tm <- c(3, 4)
 #' wide_cases <- matrix(2, nrow = 4, ncol = 9)

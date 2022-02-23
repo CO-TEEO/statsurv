@@ -1,4 +1,3 @@
-
 #' Merge rows from each group into a list
 #'
 #' `collapse_all()` takes a data frame and for each column, combines all the entries for each group
@@ -55,6 +54,9 @@
 #' @md
 #'
 #' @examples
+#' library(tidyr)
+#' library(dplyr)
+#'
 #' mtcars_nested <- mtcars %>%
 #'   group_by(cyl) %>%
 #'   nest()
@@ -69,9 +71,10 @@
 #' model_fits %>%
 #'   group_by(model_var) %>%
 #'   collapse_all()
-collapse_all <- function(df, combine_dfs = TRUE, unique_only = FALSE, unlist_scalars = TRUE, .groups = NULL) {
+collapse_all <- function(df, combine_dfs = TRUE, unique_only = FALSE,
+                         unlist_scalars = TRUE, .groups = NULL) {
   df <- df %>%
-    dplyr::summarize(dplyr::across(everything(), .fns = collapse,
+    dplyr::summarize(dplyr::across(dplyr::everything(), .fns = collapse,
                      combine_dfs = combine_dfs, unique_only = unique_only),
               .groups = .groups)
   if (unlist_scalars) {
@@ -99,16 +102,19 @@ collapse_all <- function(df, combine_dfs = TRUE, unique_only = FALSE, unlist_sca
 #' @md
 #'
 #' @examples
+#'
 #' vec <- c(1, 2, 3, 3, 4)
 #' collapse(vec)
 #'
 #' collapse(vec, unique_only = TRUE)
 #'
 #' df1 <- data.frame(x = c(1, 2, 3), y = c("A", "B", "C"))
-#' df2 <- data.farme(x = c(4, 5), y= c("D", "E"))
+#' df2 <- data.frame(x = c(4, 5), y= c("D", "E"))
 #' collapse(list(df1, df2), combine_dfs = TRUE)
 #'
 #' # collapse can be used together with summarize:
+#' library("dplyr")
+#' library("tidyr")
 #' mtcars_nested <- mtcars %>%
 #'   group_by(cyl) %>%
 #'   nest()
@@ -122,8 +128,8 @@ collapse_all <- function(df, combine_dfs = TRUE, unique_only = FALSE, unlist_sca
 #' # Combine the results from each model separately
 #' model_fits %>%
 #'   group_by(model_var) %>%
-#'   summarize(models = collapse(model),
-#'             predictions = collapse(predictions, combine_dfs = TRUE))
+#'   summarize(models = statsurv::collapse(model),
+#'             predictions = statsurv::collapse(predictions, combine_dfs = TRUE))
 collapse <- function(vec, combine_dfs = TRUE, unique_only = FALSE) {
 
 

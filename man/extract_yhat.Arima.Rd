@@ -28,7 +28,7 @@ originally fit the model, and any new values of xreg to be used for prediction. 
 Unlike \code{\link[stats]{predict.Arima}}, \code{newxreg} must contain both the old and new values
 of xreg.}
 
-\item{...}{}
+\item{...}{Additional arguments passed into other methods}
 }
 \value{
 The input data frame \code{newdata} with the added column \code{.fitted} containing the predicted

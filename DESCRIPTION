@@ -16,16 +16,9 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Imports:
-    lubridate,
-    gridcoord,
-    raster,
-    sp,
     rlang,
     tibble,
-    spdep,
-    scanstatistics,
-    arm,
-    simplecache,
+    scanstatistics (>= 1.0.2),
     magrittr,
     dplyr,
     tidyr,
@@ -39,7 +32,10 @@ Imports:
     vctrs,
     generics,
     broom,
-    broom.mixed
+    broom.mixed,
+    purrr,
+    ismev,
+    reliaR
 Suggests:
     testthat (>= 2.1.0),
     knitr,
@@ -47,8 +43,13 @@ Suggests:
     forecast,
     rgdal,
     INLA,
-    lme4
+    lme4,
+    lubridate,
+    here,
+    ggplot2
 RoxygenNote: 7.1.2
 VignetteBuilder: knitr
 Depends: 
     R (>= 2.10)
+Remotes: 
+    BenjaK/scanstatistics
