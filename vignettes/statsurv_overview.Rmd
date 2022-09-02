@@ -58,6 +58,8 @@ more involved than for a typical R package. The easiest way to install it is to 
 
 ```{r, eval = FALSE}
 install.packages("remotes") 
+remotes::install_github("cran/reliaR")
+remotes::install_github("BenjaK/scanstatistics")
 remotes::install_github("CO-TEEO/statsurv")
 ```
 

@@ -168,6 +168,7 @@ padded_aggregated_data
 
 validate_spacetime_data(padded_aggregated_data)
 ```
+
 That's a little annoying to do by hand, so we could also use the function `pad_spacetime_data` to do
 it automatically:
 ```{r}

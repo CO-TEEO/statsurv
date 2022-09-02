@@ -1,0 +1,17 @@
+xMaybe write a vignette on using ARIMA models with the package? 
+
+-Figure out what we're doing with scanstatistics - for now, nothing. We can still install from github.
+
+-lintr
+
+-R Cmd check
+
+-covr
+
+-devtools::build_vignettes()
+
+-Versioning
+
+-Github
+
+Make github version public
