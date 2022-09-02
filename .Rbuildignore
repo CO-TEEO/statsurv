@@ -14,3 +14,7 @@
 ^coverage_report\.html$
 ^dev$
 ^improvements_punch_list\.txt$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^\.github$

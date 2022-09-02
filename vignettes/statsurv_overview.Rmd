@@ -389,25 +389,23 @@ cusum_results <- model_predictions %>%
 
 We can also swap out how we're preforming our modeling. `lm`, `glm`, `INLA`, `lme4`, `ARIMA`, and `INLA` will all work without modification, as will any other model that has an `augment` function. 
 
-Let's fit our data using an INLA model:
-```{r INLA}
-library(INLA)
+Let's get rid of the random effects and fit our data using a regular glm model:
+```{r glmer}
 model_fits <- windowed_data %>%
   rowmute(training_data = prepare_training_data(curr_data, 
-                                                  outcome_col = count,
-                                                  split_id = split_id, 
-                                                  prep_strategy = "NA"),
-          mod =  inla(count ~ I(year - 1985) + f(county, model = "iid"),
-                      family = "poisson",
-                      data = training_data,
-                      offset = log(population),
-                      control.predictor=list(compute = TRUE)))
+                                                outcome_col = count,
+                                                split_id = split_id, 
+                                                prep_strategy = "NA"),
+          mod =  glm(count ~ I(year - 1985) + offset(log(population)),
+                     family = poisson(link = "log"),
+                     data = training_data)
+  )
 
 ```
 
 Note that we have to use `prep_strategy = "NA"` and `control.predictor=list(compute = TRUE)` in
-order to be able to extract accurate predictions from the INLA model.
-```{r INLA-extract-yhat}
+order to be able to extract accurate predictions from the glmer model.
+```{r glmer-extract-yhat}
 model_fits %>%
   rowmute(aug_data = extract_yhat(mod, curr_data))
 
