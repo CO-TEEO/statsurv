@@ -74,9 +74,11 @@
 collapse_all <- function(df, combine_dfs = TRUE, unique_only = FALSE,
                          unlist_scalars = TRUE, .groups = NULL) {
   df <- df %>%
-    dplyr::summarize(dplyr::across(dplyr::everything(), .fns = collapse,
-                     combine_dfs = combine_dfs, unique_only = unique_only),
-              .groups = .groups)
+    dplyr::summarize(dplyr::across(dplyr::everything(),
+                                   .fns = \(x) collapse(x,
+                                                        combine_dfs = combine_dfs,
+                                                        unique_only = unique_only)),
+                                   .groups = .groups)
   if (unlist_scalars) {
     df <- unlist_scalars(df)
   }

@@ -66,13 +66,29 @@ window_idtime <- function(spacetime_data, min_train,
             min_train + n_predict <= nrow(spacetime_data))
 
 
+
   # Actual code
+  gen_uniq_names = function(df, base) {
+    suffix = 0
+    while (TRUE) {
+      new_name = paste0(base, suffix)
+      if (!new_name %in% colnames(df)) {
+        break
+      }
+      suffix = suffix + 1
+    }
+    return(new_name)
+  }
   spacetime_data <- dplyr::ungroup(spacetime_data)
+  space_name = gen_uniq_names(spacetime_data, "space")
+  # time_name = gen_uniq_names(spacetime_data, "time")
+  spacetime_data[[space_name]] = spacetime_data$id_space
+  # spacetime_data[[time_name]] =
 
   ### Deal with arity  ----
   if (split_spatial_locations) {
     spacetime_data <- spacetime_data %>%
-      dplyr::group_by(.data$id_space)
+      dplyr::group_by(dplyr::across(dplyr::all_of(space_name)))
   }
 
 
@@ -90,19 +106,21 @@ window_idtime <- function(spacetime_data, min_train,
   spacetime_data <-
     spacetime_data %>%
     dplyr::arrange(.data$id_time) %>%
-    dplyr::mutate(curr_data = slider::slide_index(dplyr::cur_data_all(), .data$id_time,
+    dplyr::mutate(curr_data = slider::slide_index(dplyr::pick(!any_of(space_name)), .data$id_time,
                                                   function(df) df,
                                                   .before = before_func,
                                                   .after = 0,
                                                   .complete = TRUE),
                   split_id = .data$id_time - n_predict + 1) %>%
-    dplyr::select(.data$id_space, .data$id_time, .data$split_id, .data$curr_data)
-
+    dplyr::select(dplyr::all_of(space_name), "id_time", "split_id", "curr_data")
+  spacetime_data$id_space = spacetime_data[[space_name]]
+  spacetime_data[[space_name]] = NULL
 
   spacetime_data <- spacetime_data %>%
     dplyr::rowwise() %>%
     dplyr::filter(!is.null(.data$curr_data)) %>%
     dplyr::ungroup()
+
   if (!split_spatial_locations) {
     spacetime_data <- spacetime_data %>%
       dplyr::group_by(.data$id_time) %>%
@@ -113,10 +131,10 @@ window_idtime <- function(spacetime_data, min_train,
 
   # Clean up the names
   spacetime_data <- spacetime_data %>%
-    dplyr::select(window_time_id = .data$id_time,
-                  window_space_id = .data$id_space,
-                  split_id = .data$split_id,
-                  curr_data = .data$curr_data)
+    dplyr::select(window_time_id = "id_time",
+                  window_space_id = "id_space",
+                  split_id = "split_id",
+                  curr_data = "curr_data")
 
   if (step != 1) {
     wanted_time_ids <- seq(min(spacetime_data$window_time_id), max(spacetime_data$window_time_id),

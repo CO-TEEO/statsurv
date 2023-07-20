@@ -134,8 +134,9 @@ extract_yhat.inla <- function(fit, newdata, se_fit = FALSE, ...) {
   # I'm always going to be using the linear predictor.
   if (is.null(fit$marginals.linear.predictor)) {
     stop("Unable to extract fitted values from this inla-object. ",
-         "The inla-object must be computed with option ",
-         "'control.predictor=list(compute = TRUE)' to extract fitted values.")
+         "The inla-object must be computed with options ",
+         "'control.predictor=list(compute = TRUE)' and ",
+         "'control.compute=list(return.marginals.predictor=TRUE)' to extract fitted values.")
   }
 
   inla_link <- get_inla_link(fit)

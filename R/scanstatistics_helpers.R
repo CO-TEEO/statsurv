@@ -123,9 +123,9 @@ pivot_for_scan <- function(spacetime_data, value_col) {
 
   x <- x %>%
     dplyr::arrange(.data$id_time, .data$id_space) %>%
-    tidyr::pivot_wider(id_cols = .data$id_time,
-                       names_from = .data$id_space,
-                       values_from = .data$y) %>%
+    tidyr::pivot_wider(id_cols = "id_time",
+                       names_from = "id_space",
+                       values_from = "y") %>%
     dplyr::arrange(.data$id_time) %>%
     as.data.frame()
   rownames(x) <- x$id_time
@@ -150,7 +150,7 @@ unpivot_parallel_alarms <- function(parallel_alarm_res, values_to = ".action_lev
 
   df %>%
     tibble::rownames_to_column("id_time") %>%
-    tidyr::pivot_longer(cols = -.data$id_time, names_to = "id_space", values_to = values_to) %>%
+    tidyr::pivot_longer(cols = -"id_time", names_to = "id_space", values_to = values_to) %>%
     dplyr::mutate(id_space = as.numeric(.data$id_space),
                   id_time = as.numeric(.data$id_time)) %>%
     tibble::as_tibble() %>%

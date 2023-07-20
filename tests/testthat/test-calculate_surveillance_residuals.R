@@ -22,7 +22,7 @@ check_lengths <- function(surv_dfs, lengths) {
                lengths)
 }
 
-test_that("Works for n_predict = 1, split_spatial_locations = TRUE", {
+test_that("Works for n_predict = 1, split_spatial_locations = FALSE", {
   base_df <- window_idtime(spacetime_data, min_train = 5, max_train = 8, n_predict = 1,
                            split_spatial_locations = FALSE) %>%
     rowmute(aug_data = dplyr::mutate(curr_data, .fitted = rnorm(dplyr::n())))

@@ -61,9 +61,10 @@ prepare_training_data <- function(spacetime_data, outcome_cols, split_id,
       }
       return(vec)
     }
-    spacetime_data <- dplyr::mutate(spacetime_data, dplyr::across({{outcome_cols}}, .fns = prep_f,
-                                                id_time = .data$id_time,
-                                                split_id = .env$split_id))
+    spacetime_data <- dplyr::mutate(spacetime_data, dplyr::across({{outcome_cols}},
+                                                                  .fns = \(x) prep_f(x,
+                                                                                     id_time = .data$id_time,
+                                                                                     split_id = .env$split_id)))
   } else if (prep_strategy == "truncate") {
     spacetime_data <- spacetime_data[!mask, ]
   } else {

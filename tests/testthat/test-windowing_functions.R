@@ -9,7 +9,7 @@ spacetime_data$f <- rep(c(min, max, median, mean), each = 25)
 spacetime_data$df <- data.frame(xx = 1:100, yy = 201:300)
 organize_df <- function(df) {
   df %>%
-    dplyr::arrange(dplyr::across()) %>%
+    dplyr::arrange(dplyr::across(dplyr::everything())) %>%
     as.data.frame() %>%
     tibble::remove_rownames()
 }

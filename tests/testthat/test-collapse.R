@@ -72,8 +72,8 @@ test_that("collapse turns things into lists", {
                        dfs = list(data.frame(x = 1), data.frame(x = 2), data.frame(x = 2)))
 
   collapsed_df <- df %>%
-    dplyr::summarise(dplyr::across(.cols = dplyr::everything(), .fns = collapse, combine_dfs = FALSE,
-                                   unique_only = FALSE))
+    dplyr::summarise(dplyr::across(.cols = dplyr::everything(),
+                                   .fns = \(x) collapse(x, combine_dfs = FALSE, unique_only = FALSE)))
   expect_equal(nrow(collapsed_df), 1)
   expect_equal(collapsed_df$id, list(c(1, 2, 2)))
   expect_equal(collapsed_df$factors, list(factor(c("A", "B", "C"))))
@@ -84,8 +84,8 @@ test_that("collapse turns things into lists", {
   # But this is actually now a three-level deep nested list
   expect_equal(collapsed_df$lists, list(list(list(1), list(2), list(1))))
   collapsed_df2 <- df %>%
-    dplyr::summarise(dplyr::across(.cols = dplyr::everything(), .fns = collapse, combine_dfs = TRUE,
-                                   unique_only = FALSE))
+    dplyr::summarise(dplyr::across(.cols = dplyr::everything(),
+                                   .fns = \(x) collapse(x, combine_dfs = TRUE, unique_only = FALSE)))
   expect_equal(dplyr::select(collapsed_df, -dfs), dplyr::select(collapsed_df2, -dfs))
   expect_equal(collapsed_df2$dfs, list(data.frame(x = c(1, 2, 2))))
 
@@ -94,8 +94,8 @@ test_that("collapse turns things into lists", {
 
   # Then repeat with unique_only = TRUE
   collapsed_df <- df %>%
-    dplyr::summarise(dplyr::across(.cols = dplyr::everything(), .fns = collapse, combine_dfs = FALSE,
-                                   unique_only = TRUE))
+    dplyr::summarise(dplyr::across(.cols = dplyr::everything(),
+                                   .fns = \(x) collapse(x, combine_dfs = FALSE, unique_only = TRUE)))
   expect_equal(nrow(collapsed_df), 1)
   expect_equal(collapsed_df$id, list(c(1, 2)))
   expect_equal(collapsed_df$factors, list(factor(c("A", "B", "C"))))
@@ -104,8 +104,8 @@ test_that("collapse turns things into lists", {
   expect_equal(collapsed_df$dfs, list(list(data.frame(x = 1), data.frame(x = 2))))
   expect_equal(collapsed_df$lists, list(list(list(1), list(2))))
   collapsed_df2 <- df %>%
-    dplyr::summarise(dplyr::across(.cols = dplyr::everything(), .fns = collapse, combine_dfs = TRUE,
-                                   unique_only = TRUE))
+    dplyr::summarise(dplyr::across(.cols = dplyr::everything(),
+                                   .fns = \(x) collapse(x, combine_dfs = TRUE, unique_only = TRUE)))
   expect_equal(dplyr::select(collapsed_df, -dfs), dplyr::select(collapsed_df2, -dfs))
   expect_equal(collapsed_df2$dfs, list(data.frame(x = c(1, 2, 2))))
   expect_equal(collapsed_df, collapse_all(df, combine_dfs = FALSE, unique_only = TRUE, unlist_scalars = FALSE))
@@ -114,16 +114,16 @@ test_that("collapse turns things into lists", {
   # Then some quick checks to make sure our groupings work
   collapsed_df <- df %>%
     dplyr::group_by(id) %>%
-    dplyr::summarise(dplyr::across(.cols = dplyr::everything(), .fns = collapse, combine_dfs = FALSE,
-                                   unique_only = FALSE))
+    dplyr::summarise(dplyr::across(.cols = dplyr::everything(),
+                                   .fns = \(x) collapse(x, combine_dfs = FALSE, unique_only = FALSE)))
   expect_equal(nrow(collapsed_df), 2)
   expect_equal(collapsed_df$id, c(1, 2))
   expect_equal(collapsed_df$funcs, list(mean, list(median, median)))
   expect_equal(collapsed_df$dfs, list(data.frame(x = 1), list(data.frame(x = 2), data.frame(x = 2))))
   collapsed_df2 <- df %>%
     dplyr::group_by(id) %>%
-    dplyr::summarise(dplyr::across(.cols = dplyr::everything(), .fns = collapse, combine_dfs = TRUE,
-                                   unique_only = FALSE))
+    dplyr::summarise(dplyr::across(.cols = dplyr::everything(),
+                                   .fns = \(x) collapse(x, combine_dfs = TRUE, unique_only = FALSE)))
   expect_equal(dplyr::select(collapsed_df, -dfs), dplyr::select(collapsed_df2, -dfs))
   expect_equal(collapsed_df2$dfs, list(data.frame(x = 1), data.frame(x = c(2, 2))))
   expect_equal(collapsed_df, collapse_all(dplyr::group_by(df, id),
@@ -135,16 +135,16 @@ test_that("collapse turns things into lists", {
   # And with unique_only = TRUE
   collapsed_df <- df %>%
     dplyr::group_by(id) %>%
-    dplyr::summarise(dplyr::across(.cols = dplyr::everything(), .fns = collapse, combine_dfs = FALSE,
-                                   unique_only = TRUE))
+    dplyr::summarise(dplyr::across(.cols = dplyr::everything(),
+                                   .fns = \(x) collapse(x, combine_dfs = FALSE, unique_only = TRUE)))
   expect_equal(nrow(collapsed_df), 2)
   expect_equal(collapsed_df$id, c(1, 2))
   expect_equal(collapsed_df$funcs, list(mean, median))
   expect_equal(collapsed_df$dfs, list(data.frame(x = 1), data.frame(x = 2)))
   collapsed_df2 <- df %>%
     dplyr::group_by(id) %>%
-    dplyr::summarise(dplyr::across(.cols = dplyr::everything(), .fns = collapse, combine_dfs = TRUE,
-                                   unique_only = TRUE))
+    dplyr::summarise(dplyr::across(.cols = dplyr::everything(),
+                                   .fns = \(x) collapse(x, combine_dfs = TRUE, unique_only = TRUE)))
   expect_equal(dplyr::select(collapsed_df, -dfs), dplyr::select(collapsed_df2, -dfs))
   expect_equal(collapsed_df2$dfs, list(data.frame(x = 1), data.frame(x = c(2, 2))))
   expect_equal(collapsed_df, collapse_all(dplyr::group_by(df, id),

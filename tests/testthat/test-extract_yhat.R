@@ -104,7 +104,7 @@ for (ind in seq_len(nrow(glmer_combos))) {
 }
 
 ### INLA ----
-# This ones extra-long
+# This one's extra-long
 inla_lookup <- tibble::tribble(~link_name, ~family, ~link,
                                "gaussian", "gaussian", "identity",
                                "logit", "binomial", "logit",
@@ -132,7 +132,7 @@ for (ind in seq_len(nrow(inla_combos))) {
                       data = curr_data,
                       family = curr_row$family,
                       control.family = list(link = curr_row$link),
-                      control.compute = list(config = TRUE),
+                      control.compute = list(config = TRUE, return.marginals.predictor=TRUE),
                       control.predictor = list(compute=TRUE),
                       offset = offset)
     yhat <- extract_yhat(fit, curr_newdata)
@@ -141,7 +141,7 @@ for (ind in seq_len(nrow(inla_combos))) {
                        data = curr_data,
                        family = curr_row$family,
                        control.family = list(link = curr_row$link),
-                       control.compute = list(config = TRUE),
+                       control.compute = list(config = TRUE, return.marginals.predictor=TRUE),
                        control.predictor = list(compute=TRUE),
                        E = exposure)
     yhat2 <- extract_yhat(fit2, curr_newdata)
@@ -151,7 +151,7 @@ for (ind in seq_len(nrow(inla_combos))) {
                       data = curr_data,
                       family = curr_row$family,
                       control.family = list(link = curr_row$link),
-                      control.compute = list(config = TRUE),
+                      control.compute = list(config = TRUE, return.marginals.predictor=TRUE),
                       control.predictor = list(compute=TRUE), verbose = FALSE)
     yhat <- extract_yhat(fit, curr_newdata)
   }
