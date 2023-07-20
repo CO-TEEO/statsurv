@@ -102,8 +102,7 @@ tidy_inla <- function(fit, include_random = FALSE) {
 #' @inheritParams tidy_inla
 #'
 #' @return A 1-row data frame containing information on goodness of fit, p-values, or model
-#'   convergence for the model object. Contains information on DIC, WAIC, the log likelihood, CPO,
-#'   and the effective number of parameters.
+#'   convergence for the model object. Contains information on DIC, WAIC, the log likelihood and CPO.
 #' @export
 #' @md
 #'
@@ -131,8 +130,7 @@ glance_inla <- function(fit) {
                       WAIC = fit$waic$waic,
                       cpo.failures =  sum(is.na(fit$cpo$failure)) +
                         sum(fit$cpo$failure, na.rm = TRUE),
-                      cpo.logsum = sum(log(fit$cpo$cpo), na.rm = TRUE),
-                      n.eff.param = fit$neffp[1, 1])
+                      cpo.logsum = sum(log(fit$cpo$cpo), na.rm = TRUE))
   m <- sapply(glance_list, is.null)
   glance_list[m] <- NA
 

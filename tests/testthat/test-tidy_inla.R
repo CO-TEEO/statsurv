@@ -81,8 +81,7 @@ test_that("glance_inla gives out numbers", {
   summary1 <- as.data.frame(glance_inla(fit1))
   expect_equal(is.na(summary1)[1, ],
                c(cpu.time = F, deviance = T, logLik = F, DIC = T, DIC.sat = T,
-                 WAIC = T, cpo.failures = F, cpo.logsum = F, n.eff.param = F))
-  expect_equivalent(summary1$n.eff.param, 2, tolerance = 1e-3)
+                 WAIC = T, cpo.failures = F, cpo.logsum = F))
   expect_equivalent(summary1$cpo.logsum, 0, tolerance = 1e-3)
 
   fit2 <- INLA::inla(formulas$f_lm,
@@ -93,8 +92,7 @@ test_that("glance_inla gives out numbers", {
   summary2 <- as.data.frame(glance_inla(fit2))
   expect_equal(is.na(summary2)[1, ],
                c(cpu.time = F, deviance = F, logLik = F, DIC = F, DIC.sat = F,
-                 WAIC = T, cpo.failures = F, cpo.logsum = F, n.eff.param = F))
-  expect_equivalent(summary2$n.eff.param, 2, tolerance = 1e-3)
+                 WAIC = T, cpo.failures = F, cpo.logsum = F))
   expect_equivalent(summary2$cpo.logsum, 0, tolerance = 1e-3)
 
   fit3 <- INLA::inla(formulas$f_lm,
@@ -105,8 +103,7 @@ test_that("glance_inla gives out numbers", {
   summary3 <- as.data.frame(glance_inla(fit3))
   expect_equal(is.na(summary3)[1, ],
                c(cpu.time = F, deviance = F, logLik = F, DIC = F, DIC.sat = F,
-                 WAIC = F, cpo.failures = F, cpo.logsum = F, n.eff.param = F))
-  expect_equivalent(summary2$n.eff.param, 2, tolerance = 1e-3)
+                 WAIC = F, cpo.failures = F, cpo.logsum = F))
   expect_false(summary3$cpo.logsum == 0)
 })
 
